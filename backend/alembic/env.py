@@ -16,7 +16,7 @@ target_metadata = Base.metadata
 def _database_url() -> str:
     # Tests inject a URL programmatically; everything else reads DATABASE_URL.
     override = config.attributes.get("database_url")
-    return override or get_settings().database_url.get_secret_value()
+    return override or get_settings().sqlalchemy_url
 
 
 def run_migrations_offline() -> None:

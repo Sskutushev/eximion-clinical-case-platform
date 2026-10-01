@@ -8,7 +8,6 @@ type Schemas = components["schemas"];
 
 export type PublicClinicalCase = Schemas["PublicClinicalCase"];
 export type PublicFinding = Schemas["PublicFinding"];
-export type FindingMeasurement = Schemas["FindingMeasurement"];
 export type CaseStats = Schemas["CaseStats"];
 export type FindingCategory = Schemas["FindingCategory"];
 export type CaseSummary = Schemas["CaseSummary"];

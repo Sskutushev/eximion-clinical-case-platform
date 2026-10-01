@@ -1,4 +1,3 @@
-import { MeasurementChart } from "@/components/MeasurementChart";
 import { CATEGORY_ICON, UserIcon } from "@/components/icons";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { FindingCategory, PublicClinicalCase } from "@/lib/api/types";
@@ -71,20 +70,7 @@ export function CaseView({
                 </h3>
                 <ul className="finding-list">
                   {items.map((finding, index) => (
-                    <li key={`${category}-${index}`}>
-                      <span className="finding-list__text">{finding.value}</span>
-                      {finding.measurements.length > 0 ? (
-                        <div className="finding-list__charts">
-                          {finding.measurements.map((measurement) => (
-                            <MeasurementChart
-                              key={measurement.label}
-                              measurement={measurement}
-                              t={t}
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-                    </li>
+                    <li key={`${category}-${index}`}>{finding.value}</li>
                   ))}
                 </ul>
               </li>

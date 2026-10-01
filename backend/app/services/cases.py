@@ -1,21 +1,18 @@
 """Use cases. One database transaction per public function."""
 
 import uuid
-from dataclasses import asdict
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import CaseAnswer, CaseFinding, CaseSubmission, ClinicalCase
 from app.domain.enums import FindingCategory, PatientSex, ScoreOutcome
-from app.domain.measurements import parse_measurements
 from app.domain.scoring import AnswerKeyEntry, max_score, normalize_answer, score_answer
 from app.schemas.cases import (
     CaseList,
     CaseStats,
     CaseSummary,
     ClinicalCaseCreate,
-    FindingMeasurement,
     OutcomeCount,
     PublicClinicalCase,
     PublicFinding,
@@ -78,11 +75,7 @@ def get_public_case(session: Session, case_id: uuid.UUID) -> PublicClinicalCase:
         patient_sex=PatientSex(case.patient_sex) if case.patient_sex else None,
         presentation=case.presentation,
         findings=[
-            PublicFinding(
-                category=FindingCategory(f.category),
-                value=f.value,
-                measurements=[FindingMeasurement(**asdict(m)) for m in parse_measurements(f.value)],
-            )
+            PublicFinding(category=FindingCategory(f.category), value=f.value)
             for f in case.findings
         ],
         created_at=case.created_at,
