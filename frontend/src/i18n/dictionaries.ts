@@ -58,6 +58,15 @@ export type Dictionary = {
     answered: string;
     score: (score: number, max: number) => string;
   };
+  measurement: { low: string; normal: string; high: string; reference: string };
+  stats: {
+    heading: string;
+    attempts: string;
+    solved: string;
+    average: string;
+    distribution: string;
+  };
+  composition: { heading: string; findings: string; measured: string; abnormal: string };
   settings: { theme: string; language: string; light: string; dark: string };
   footer: string;
 };
@@ -117,6 +126,20 @@ const en: Dictionary = {
     incorrect: "Incorrect",
     answered: "You answered",
     score: (score, max) => `Score: ${score} out of ${max}`,
+  },
+  measurement: { low: "Low", normal: "Normal", high: "High", reference: "Normal" },
+  stats: {
+    heading: "How others did",
+    attempts: "Attempts",
+    solved: "Solved",
+    average: "Average",
+    distribution: "Distribution of outcomes",
+  },
+  composition: {
+    heading: "Case at a glance",
+    findings: "Findings",
+    measured: "Measured",
+    abnormal: "Abnormal",
   },
   settings: { theme: "Theme", language: "Language", light: "Light", dark: "Dark" },
   footer: "Synthetic cases for demonstration. Not for clinical use.",
@@ -178,6 +201,20 @@ const de: Dictionary = {
     answered: "Ihre Antwort",
     score: (score, max) => `Punkte: ${score} von ${max}`,
   },
+  measurement: { low: "Niedrig", normal: "Normal", high: "Hoch", reference: "Norm" },
+  stats: {
+    heading: "Ergebnisse anderer",
+    attempts: "Versuche",
+    solved: "Gelöst",
+    average: "Durchschnitt",
+    distribution: "Verteilung der Ergebnisse",
+  },
+  composition: {
+    heading: "Fall im Überblick",
+    findings: "Befunde",
+    measured: "Gemessen",
+    abnormal: "Auffällig",
+  },
   settings: { theme: "Design", language: "Sprache", light: "Hell", dark: "Dunkel" },
   footer: "Synthetische Fälle zu Demonstrationszwecken. Nicht für den klinischen Einsatz.",
 };
@@ -237,6 +274,20 @@ const zh: Dictionary = {
     incorrect: "不正确",
     answered: "您的答案",
     score: (score, max) => `得分：${score} / ${max}`,
+  },
+  measurement: { low: "偏低", normal: "正常", high: "偏高", reference: "参考值" },
+  stats: {
+    heading: "其他人的作答",
+    attempts: "作答次数",
+    solved: "答对率",
+    average: "平均分",
+    distribution: "结果分布",
+  },
+  composition: {
+    heading: "病例概览",
+    findings: "检查所见",
+    measured: "可量化",
+    abnormal: "异常",
   },
   settings: { theme: "主题", language: "语言", light: "浅色", dark: "深色" },
   footer: "用于演示的合成病例，不可用于临床。",
@@ -298,6 +349,20 @@ const ar: Dictionary = {
     answered: "إجابتك",
     score: (score, max) => `النتيجة: ${score} من ${max}`,
   },
+  measurement: { low: "منخفض", normal: "طبيعي", high: "مرتفع", reference: "المعدل الطبيعي" },
+  stats: {
+    heading: "نتائج الآخرين",
+    attempts: "المحاولات",
+    solved: "نسبة الإجابات الصحيحة",
+    average: "المتوسط",
+    distribution: "توزيع النتائج",
+  },
+  composition: {
+    heading: "نظرة عامة على الحالة",
+    findings: "الموجودات",
+    measured: "قيم مقاسة",
+    abnormal: "غير طبيعية",
+  },
   settings: { theme: "المظهر", language: "اللغة", light: "فاتح", dark: "داكن" },
   footer: "حالات اصطناعية لأغراض العرض فقط. ليست للاستخدام السريري.",
 };
@@ -357,6 +422,20 @@ const fr: Dictionary = {
     incorrect: "Incorrect",
     answered: "Votre réponse",
     score: (score, max) => `Score : ${score} sur ${max}`,
+  },
+  measurement: { low: "Bas", normal: "Normal", high: "Élevé", reference: "Norme" },
+  stats: {
+    heading: "Résultats des autres",
+    attempts: "Tentatives",
+    solved: "Réussite",
+    average: "Moyenne",
+    distribution: "Répartition des résultats",
+  },
+  composition: {
+    heading: "Aperçu du cas",
+    findings: "Éléments",
+    measured: "Mesurés",
+    abnormal: "Anormaux",
   },
   settings: { theme: "Thème", language: "Langue", light: "Clair", dark: "Sombre" },
   footer: "Cas synthétiques à des fins de démonstration. Usage clinique exclu.",
@@ -418,6 +497,20 @@ const ru: Dictionary = {
     answered: "Ваш ответ",
     score: (score, max) => `Баллы: ${score} из ${max}`,
   },
+  measurement: { low: "Ниже нормы", normal: "Норма", high: "Выше нормы", reference: "Норма" },
+  stats: {
+    heading: "Результаты других",
+    attempts: "Попыток",
+    solved: "Решили верно",
+    average: "В среднем",
+    distribution: "Распределение результатов",
+  },
+  composition: {
+    heading: "Кейс кратко",
+    findings: "Находок",
+    measured: "С измерениями",
+    abnormal: "Отклонений",
+  },
   settings: { theme: "Тема", language: "Язык", light: "Светлая", dark: "Тёмная" },
   footer: "Синтетические кейсы для демонстрации. Не для клинического применения.",
 };
@@ -477,6 +570,20 @@ const uk: Dictionary = {
     incorrect: "Неправильно",
     answered: "Ваша відповідь",
     score: (score, max) => `Бали: ${score} з ${max}`,
+  },
+  measurement: { low: "Нижче норми", normal: "Норма", high: "Вище норми", reference: "Норма" },
+  stats: {
+    heading: "Результати інших",
+    attempts: "Спроб",
+    solved: "Розв’язали правильно",
+    average: "У середньому",
+    distribution: "Розподіл результатів",
+  },
+  composition: {
+    heading: "Кейс стисло",
+    findings: "Знахідок",
+    measured: "З вимірюваннями",
+    abnormal: "Відхилень",
   },
   settings: { theme: "Тема", language: "Мова", light: "Світла", dark: "Темна" },
   footer: "Синтетичні кейси для демонстрації. Не для клінічного застосування.",

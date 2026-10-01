@@ -7,6 +7,7 @@ from app.api.deps import SessionDep, require_admin
 from app.schemas.cases import (
     CaseCreated,
     CaseList,
+    CaseStats,
     ClinicalCaseCreate,
     ErrorResponse,
     PublicClinicalCase,
@@ -51,6 +52,15 @@ def list_cases(
 )
 def get_case(case_id: uuid.UUID, session: SessionDep) -> PublicClinicalCase:
     return service.get_public_case(session, case_id)
+
+
+@router.get(
+    "/{case_id}/stats",
+    responses=_NOT_FOUND,
+    summary="Aggregate attempt statistics (counts only, never answers)",
+)
+def case_stats(case_id: uuid.UUID, session: SessionDep) -> CaseStats:
+    return service.get_case_stats(session, case_id)
 
 
 @router.post(

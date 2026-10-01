@@ -105,7 +105,7 @@ def test_get_case_never_exposes_answer_key(client: TestClient, created_case_id: 
         "findings",
         "created_at",
     }
-    assert all(set(f) == {"category", "value"} for f in body["findings"])
+    assert all(set(f) == {"category", "value", "measurements"} for f in body["findings"])
     raw = response.text.casefold()
     for leaked in ("appendicitis", "lymphadenitis", "is_correct", "score_weight", "answer"):
         assert leaked not in raw
@@ -116,7 +116,8 @@ def test_get_case_returns_findings_in_order(
 ) -> None:
     body = client.get(f"/api/v1/cases/{created_case_id}").json()
 
-    assert body["findings"] == case_payload["findings"]
+    returned = [{"category": f["category"], "value": f["value"]} for f in body["findings"]]
+    assert returned == case_payload["findings"]
     assert body["patient_age"] == 24
 
 

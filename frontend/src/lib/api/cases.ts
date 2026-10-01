@@ -1,7 +1,13 @@
 import "server-only";
 
 import { api } from "@/lib/api/client";
-import type { ApiResult, CaseList, PublicClinicalCase, ScoreResponse } from "@/lib/api/types";
+import type {
+  ApiResult,
+  CaseList,
+  CaseStats,
+  PublicClinicalCase,
+  ScoreResponse,
+} from "@/lib/api/types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -34,6 +40,19 @@ export async function getCase(caseId: string): Promise<ApiResult<PublicClinicalC
     return data ? { ok: true, data } : failure(response.status);
   } catch (error) {
     console.error("getCase: backend unreachable", { error: String(error) });
+    return { ok: false, kind: "unavailable" };
+  }
+}
+
+export async function getCaseStats(caseId: string): Promise<ApiResult<CaseStats>> {
+  if (!isUuid(caseId)) return { ok: false, kind: "not_found" };
+  try {
+    const { data, response } = await api.GET("/api/v1/cases/{case_id}/stats", {
+      params: { path: { case_id: caseId } },
+    });
+    return data ? { ok: true, data } : failure(response.status);
+  } catch (error) {
+    console.error("getCaseStats: backend unreachable", { error: String(error) });
     return { ok: false, kind: "unavailable" };
   }
 }
