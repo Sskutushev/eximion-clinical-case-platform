@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 
 import pytest
@@ -126,3 +127,22 @@ def test_input_guards(valid_extraction: dict[str, Any], raw_text: str) -> None:
         ClinicalCaseExtractor(provider).extract(raw_text)
 
     assert provider.calls == []
+
+
+def test_validation_failures_do_not_log_clinical_values(
+    valid_extraction: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Pydantic embeds offending input values in its message; they must not be logged."""
+    marker = "UNIQUE-PATIENT-NARRATIVE-TOKEN"
+    provider = FakeProvider.returning(
+        {**valid_extraction, "presentation": marker, "patient_age": 400}
+    )
+
+    with caplog.at_level(logging.DEBUG), pytest.raises(SchemaValidationError):
+        ClinicalCaseExtractor(provider).extract(RAW_TEXT)
+
+    assert marker not in caplog.text
+    assert "400" not in caplog.text
+    record = next(r for r in caplog.records if r.message == "extraction failed schema validation")
+    assert record.exc_info is None
+    assert record.__dict__["fields"] == ["patient_age"]

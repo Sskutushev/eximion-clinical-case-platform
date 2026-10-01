@@ -98,12 +98,15 @@ class ClinicalCaseExtractor:
         try:
             case = ClinicalCaseExtraction.model_validate(payload)
         except ValidationError as exc:
-            # Field paths and rules only; the clinical values stay out of the log.
-            logger.exception(
+            # Field paths and error types only. Deliberately no traceback and no
+            # exc_info: Pydantic embeds the offending input values in its message,
+            # which here is clinical text. TRY400 is suppressed for that reason.
+            logger.error(  # noqa: TRY400
                 "extraction failed schema validation",
                 extra={
                     "error_count": exc.error_count(),
                     "fields": [".".join(map(str, e["loc"])) for e in exc.errors()],
+                    "error_types": sorted({e["type"] for e in exc.errors()}),
                 },
             )
             raise SchemaValidationError(
