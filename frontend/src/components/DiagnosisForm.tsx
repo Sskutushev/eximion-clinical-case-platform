@@ -4,6 +4,7 @@ import { useActionState, useId } from "react";
 
 import type { ScoreFormState } from "@/app/cases/[id]/actions";
 import { ScoreResult } from "@/components/ScoreResult";
+import { AlertIcon, StethoscopeIcon } from "@/components/icons";
 
 type DiagnosisAction = (state: ScoreFormState, formData: FormData) => Promise<ScoreFormState>;
 
@@ -17,31 +18,53 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
   const hasError = state.status === "error";
 
   return (
-    <section className="card" aria-labelledby={`${inputId}-heading`}>
-      <h2 id={`${inputId}-heading`}>Your diagnosis</h2>
-      <form action={formAction} className="diagnosis-form" noValidate>
-        <label htmlFor={inputId}>Most likely diagnosis</label>
-        <input
-          id={inputId}
-          name="answer"
-          type="text"
-          required
-          maxLength={300}
-          autoComplete="off"
-          disabled={pending}
-          aria-describedby={hasError ? `${hintId} ${errorId}` : hintId}
-          aria-invalid={hasError || undefined}
-        />
-        <p id={hintId} className="hint">
+    <section className="panel" aria-labelledby={`${inputId}-heading`}>
+      <span className="eyebrow">Your answer</span>
+      <h2 className="section-title" id={`${inputId}-heading`}>
+        Your diagnosis
+      </h2>
+
+      <form action={formAction} className="form" noValidate>
+        <label className="form__label" htmlFor={inputId}>
+          Most likely diagnosis
+        </label>
+
+        <div className="field">
+          <StethoscopeIcon className="field__icon" />
+          <input
+            id={inputId}
+            name="answer"
+            type="text"
+            required
+            maxLength={300}
+            autoComplete="off"
+            placeholder="Type a diagnosis…"
+            disabled={pending}
+            aria-describedby={hasError ? `${hintId} ${errorId}` : hintId}
+            aria-invalid={hasError || undefined}
+          />
+        </div>
+
+        <p className="hint" id={hintId}>
           Free text. Capitalisation, extra spaces and trailing punctuation do not matter.
         </p>
+
         {hasError ? (
-          <p id={errorId} role="alert" className="error">
+          <p className="form__error" id={errorId} role="alert">
+            <AlertIcon />
             {state.message}
           </p>
         ) : null}
-        <button type="submit" disabled={pending} aria-busy={pending}>
-          {pending ? "Scoring…" : "Submit diagnosis"}
+
+        <button type="submit" className="btn" disabled={pending} aria-busy={pending}>
+          {pending ? (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Scoring…
+            </>
+          ) : (
+            "Submit diagnosis"
+          )}
         </button>
       </form>
 

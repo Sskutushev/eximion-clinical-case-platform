@@ -23,17 +23,18 @@ describe("CaseView", () => {
     render(<CaseView clinicalCase={clinicalCase} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(clinicalCase.title);
-    expect(screen.getByText("Patient: 24 years, male")).toBeInTheDocument();
+    expect(screen.getByText(/Patient:\s*24 years, male/)).toBeInTheDocument();
     expect(screen.getByText(clinicalCase.presentation)).toBeInTheDocument();
 
     const groups = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     expect(groups).toEqual(["Symptoms", "Laboratory"]);
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    // 3 findings + 2 category groups + 1 patient chip
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
   });
 
   it("handles missing demographics", () => {
     render(<CaseView clinicalCase={{ ...clinicalCase, patient_age: null, patient_sex: null }} />);
 
-    expect(screen.getByText("Patient: Not specified")).toBeInTheDocument();
+    expect(screen.getByText(/Patient:\s*Not specified/)).toBeInTheDocument();
   });
 });

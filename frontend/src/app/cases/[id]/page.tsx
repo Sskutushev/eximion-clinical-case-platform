@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { submitDiagnosis } from "@/app/cases/[id]/actions";
 import { CaseView } from "@/components/CaseView";
 import { DiagnosisForm } from "@/components/DiagnosisForm";
+import { ArrowLeftIcon } from "@/components/icons";
 import { getCase } from "@/lib/api/cases";
 
 type Props = { params: Promise<{ id: string }> };
@@ -23,19 +24,27 @@ export default async function CasePage({ params }: Props) {
 
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    // Rendered by error.tsx; message is generic, details stay in server logs.
+    // Rendered by error.tsx. The message stays generic; details stay in the logs.
     throw new Error("The case service is currently unavailable.");
   }
 
   const action = submitDiagnosis.bind(null, result.data.id);
 
   return (
-    <main className="layout">
+    <div className="stack">
       <nav aria-label="Breadcrumb">
-        <Link href="/">← All cases</Link>
+        <Link href="/" className="back-link">
+          <ArrowLeftIcon />
+          All cases
+        </Link>
       </nav>
-      <CaseView clinicalCase={result.data} />
-      <DiagnosisForm action={action} />
-    </main>
+
+      <div className="case-layout">
+        <CaseView clinicalCase={result.data} />
+        <aside className="case-layout__aside">
+          <DiagnosisForm action={action} />
+        </aside>
+      </div>
+    </div>
   );
 }

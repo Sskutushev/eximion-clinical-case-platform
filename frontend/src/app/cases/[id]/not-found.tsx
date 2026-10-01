@@ -1,13 +1,23 @@
 import Link from "next/link";
 
+import { ArrowLeftIcon, InboxIcon } from "@/components/icons";
+
 export default function CaseNotFound() {
   return (
-    <main className="layout">
-      <div className="card">
-        <h1>Case not found</h1>
-        <p>This clinical case does not exist or is no longer available.</p>
-        <Link href="/">Back to all cases</Link>
+    <div className="panel empty">
+      <InboxIcon />
+      <div>
+        <h1 className="page-title" style={{ fontSize: "1.5rem" }}>
+          Case not found
+        </h1>
+        <p className="hint" style={{ marginTop: "0.5rem" }}>
+          This case does not exist, or it is no longer available.
+        </p>
       </div>
-    </main>
+      <Link href="/" className="btn btn--ghost">
+        <ArrowLeftIcon />
+        Back to all cases
+      </Link>
+    </div>
   );
 }

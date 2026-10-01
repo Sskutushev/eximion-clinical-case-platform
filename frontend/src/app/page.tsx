@@ -1,32 +1,68 @@
 import Link from "next/link";
 
+import { AlertIcon, ArrowRightIcon, InboxIcon } from "@/components/icons";
 import { listCases } from "@/lib/api/cases";
 
 export const dynamic = "force-dynamic";
+
+const dateFormat = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 export default async function HomePage() {
   const result = await listCases();
 
   return (
-    <main className="layout">
-      <div className="card">
-        <h1>Clinical cases</h1>
-        {!result.ok ? (
-          <p role="alert" className="error">
-            Cases are temporarily unavailable. Please try again shortly.
+    <div className="stack">
+      <header>
+        <span className="eyebrow">Case library</span>
+        <h1 className="page-title">Clinical cases</h1>
+        <p className="page-lede">
+          Read the presentation, weigh the findings, commit to a diagnosis. Scoring is
+          instant and the same every time.
+        </p>
+      </header>
+
+      {!result.ok ? (
+        <div className="notice" role="alert">
+          <AlertIcon />
+          <div>
+            <strong>Cases are unavailable right now.</strong>
+            <p className="hint" style={{ marginTop: "0.25rem" }}>
+              The case service did not respond. Please try again shortly.
+            </p>
+          </div>
+        </div>
+      ) : result.data.items.length === 0 ? (
+        <div className="panel empty">
+          <InboxIcon />
+          <p>
+            No cases yet. Create one with <code>POST /api/v1/cases</code> or run{" "}
+            <code>make seed</code>.
           </p>
-        ) : result.data.items.length === 0 ? (
-          <p>No cases yet. Create one through the API to get started.</p>
-        ) : (
-          <ul className="case-list">
-            {result.data.items.map((item) => (
-              <li key={item.id}>
-                <Link href={`/cases/${item.id}`}>{item.title}</Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </main>
+        </div>
+      ) : (
+        <ul className="case-grid">
+          {result.data.items.map((item) => (
+            <li key={item.id}>
+              <Link href={`/cases/${item.id}`} className="case-card">
+                <h2 className="case-card__title">{item.title}</h2>
+                <div className="case-card__foot">
+                  <time dateTime={item.created_at}>
+                    {dateFormat.format(new Date(item.created_at))}
+                  </time>
+                  <span className="case-card__cta">
+                    Solve <ArrowRightIcon />
+                  </span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

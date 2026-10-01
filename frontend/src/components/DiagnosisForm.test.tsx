@@ -42,7 +42,7 @@ describe("DiagnosisForm", () => {
 
     const result = await screen.findByTestId("score-result");
     expect(result).toHaveTextContent("Correct");
-    expect(result).toHaveTextContent("10 / 10");
+    expect(result).toHaveTextContent("Score: 10 out of 10");
     expect(result).toHaveTextContent("Acute appendicitis");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Submit diagnosis" })).toBeEnabled(),
