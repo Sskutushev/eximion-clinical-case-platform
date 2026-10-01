@@ -44,9 +44,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @model_validator(mode="after")
-    def _fail_closed_in_production(self) -> Self:
-        if self.environment == "production" and not self.admin_api_key:
-            raise ValueError("ADMIN_API_KEY must be set when ENVIRONMENT=production")
+    def _database_is_configured(self) -> Self:
         configured = self.database_url is not None or bool(
             self.db_user and self.db_password and self.db_name
         )

@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
+
+    # Checked here rather than on Settings: authoring is an HTTP concern, and
+    # Alembic loads the same settings without ever serving a request.
+    if settings.environment == "production" and settings.admin_api_key is None:
+        raise RuntimeError("ADMIN_API_KEY must be set when ENVIRONMENT=production")
     if settings.admin_api_key is None:
         logger.warning("ADMIN_API_KEY not set: case authoring is unauthenticated (local only)")
 

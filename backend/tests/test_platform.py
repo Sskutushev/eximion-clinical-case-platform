@@ -1,9 +1,11 @@
 """Migrations, configuration safety, health checks and error hygiene."""
 
+import json
+
 import pytest
 from alembic import command
 from fastapi.testclient import TestClient
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr
 from sqlalchemy import create_engine, inspect
 
 from app.core.config import Settings
@@ -26,15 +28,6 @@ def test_migrations_upgrade_downgrade_roundtrip_and_match_models() -> None:
     tables = set(inspect(engine).get_table_names())
     engine.dispose()
     assert {"clinical_cases", "case_findings", "case_answers", "case_submissions"} <= tables
-
-
-def test_production_requires_admin_key() -> None:
-    with pytest.raises(ValidationError, match="ADMIN_API_KEY"):
-        Settings(
-            environment="production",
-            admin_api_key=None,
-            database_url=SecretStr("postgresql+psycopg://u:p@127.0.0.1:1/none"),
-        )
 
 
 def test_production_hides_interactive_docs() -> None:
@@ -88,3 +81,56 @@ def test_unhandled_errors_do_not_leak_internals() -> None:
     assert response.status_code == 500
     assert response.json() == {"detail": "Internal server error"}
     assert "secret" not in response.text
+
+
+def test_settings_load_without_an_admin_key_in_production() -> None:
+    """The migration job runs with ENVIRONMENT=production and no admin key.
+
+    Alembic loads these settings, so requiring the key here would break the
+    migration before it ran a single statement.
+    """
+    settings = Settings(
+        environment="production",
+        admin_api_key=None,
+        database_url=SecretStr("postgresql+psycopg://u:p@127.0.0.1:1/none"),
+    )
+
+    assert settings.admin_api_key is None
+
+
+def test_the_api_refuses_to_start_in_production_without_an_admin_key() -> None:
+    with pytest.raises(RuntimeError, match="ADMIN_API_KEY"):
+        create_app(
+            Settings(
+                environment="production",
+                admin_api_key=None,
+                database_url=SecretStr("postgresql+psycopg://u:p@127.0.0.1:1/none"),
+            )
+        )
+
+
+def test_database_errors_are_logged_without_sql_parameters(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A SQLAlchemy exception embeds bound parameters, which are clinical text."""
+    settings = Settings(
+        environment="test",
+        database_url=SecretStr("postgresql+psycopg://nobody:x@127.0.0.1:1/none"),
+        db_pool_timeout_seconds=1,
+        db_connect_timeout_seconds=1,
+    )
+
+    with TestClient(create_app(settings), raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/cases")
+
+    assert response.status_code == 500
+    logs = capsys.readouterr().out
+    entry = next(
+        json.loads(line)
+        for line in logs.splitlines()
+        if line.startswith("{") and json.loads(line).get("message") == "database error"
+    )
+    assert entry["error_type"] == "OperationalError"
+    assert "exception" not in entry
+    assert "Traceback" not in logs
+    assert "password" not in logs

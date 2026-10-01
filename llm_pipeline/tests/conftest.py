@@ -15,8 +15,8 @@ def valid_extraction() -> dict[str, Any]:
             {"category": "laboratory", "value": "White cell count 14.2 x10^9/L"},
         ],
         "answers": [
-            {"text": "Acute appendicitis", "is_correct": True, "score_weight": 10},
-            {"text": "Appendicitis", "is_correct": True, "score_weight": 10},
-            {"text": "Mesenteric lymphadenitis", "is_correct": False, "score_weight": 3},
+            {"text": "Acute appendicitis", "is_correct": True},
+            {"text": "Appendicitis", "is_correct": True},
+            {"text": "Mesenteric lymphadenitis", "is_correct": False},
         ],
     }

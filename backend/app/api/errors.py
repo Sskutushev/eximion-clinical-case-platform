@@ -4,7 +4,7 @@ import logging
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.services.cases import CaseNotFoundError
 
@@ -24,6 +24,17 @@ async def _integrity_error(_: Request, exc: Exception) -> JSONResponse:
     return _error(status.HTTP_409_CONFLICT, "Request conflicts with existing data")
 
 
+async def _database_error(_: Request, exc: Exception) -> JSONResponse:
+    """Database failures are logged without a traceback.
+
+    A SQLAlchemy exception embeds the statement and its bound parameters, and
+    those parameters are clinical text. `hide_parameters=True` on the engine
+    redacts them, and not logging the traceback at all is the second line.
+    """
+    logger.error("database error", extra={"error_type": type(exc).__name__})
+    return _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal server error")
+
+
 async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
     logger.error("unhandled error", exc_info=exc)
     return _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal server error")
@@ -32,4 +43,5 @@ async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(CaseNotFoundError, _case_not_found)
     app.add_exception_handler(IntegrityError, _integrity_error)
+    app.add_exception_handler(SQLAlchemyError, _database_error)
     app.add_exception_handler(Exception, _unhandled)

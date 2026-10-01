@@ -12,7 +12,7 @@ from google.genai import errors as genai_errors
 from google.genai import types
 
 from clinical_extraction.config import ExtractionSettings
-from clinical_extraction.errors import ProviderError
+from clinical_extraction.errors import ContentBlockedError, ProviderError
 from clinical_extraction.providers.base import ProviderResponse
 
 logger = logging.getLogger(__name__)
@@ -75,9 +75,9 @@ class GeminiProvider:
 
         text = response.text
         if not text or not text.strip():
-            reason = getattr(response, "prompt_feedback", None)
-            raise ProviderError(
-                f"Gemini returned an empty response (feedback: {reason})", retryable=False
+            feedback = getattr(response, "prompt_feedback", None)
+            raise ContentBlockedError(
+                "Gemini returned an empty response", feedback=str(feedback) if feedback else None
             )
 
         usage = None

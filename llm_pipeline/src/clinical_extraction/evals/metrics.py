@@ -86,6 +86,7 @@ class CaseStatus(StrEnum):
     SCORED = "scored"
     SCHEMA_INVALID = "schema_invalid"
     PROVIDER_ERROR = "provider_error"
+    MODEL_BLOCKED = "model_blocked"
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +104,7 @@ class CaseReport:
 
 
 def _answer_key(case: ClinicalCaseExtraction) -> set[str]:
-    return {normalize(a.text) for a in case.answers if a.is_correct and a.score_weight > 0}
+    return {normalize(a.text) for a in case.answers if a.is_correct}
 
 
 def evaluate_case(
@@ -169,6 +170,7 @@ class EvalSummary:
     total: int
     scored: int
     provider_errors: int
+    model_blocked: int
     schema_valid_rate: float
     age_accuracy: float
     sex_accuracy: float
@@ -195,8 +197,11 @@ def summarize(
     total = len(reports)
     valid = [r for r in reports if r.status is CaseStatus.SCORED]
     provider_errors = sum(1 for r in reports if r.status is CaseStatus.PROVIDER_ERROR)
+    blocked = sum(1 for r in reports if r.status is CaseStatus.MODEL_BLOCKED)
     # Schema validity is measured over the responses the model actually returned.
-    answered = total - provider_errors
+    # A request that never reached the model, or that the model declined, is
+    # neither a valid nor an invalid schema.
+    answered = total - provider_errors - blocked
     categories = [
         r.finding_category_accuracy for r in valid if r.finding_category_accuracy is not None
     ]
@@ -208,6 +213,7 @@ def summarize(
         total=total,
         scored=len(valid),
         provider_errors=provider_errors,
+        model_blocked=blocked,
         schema_valid_rate=round(len(valid) / answered, 4) if answered else 0.0,
         age_accuracy=_mean([float(bool(r.age_correct)) for r in valid]),
         sex_accuracy=_mean([float(bool(r.sex_correct)) for r in valid]),

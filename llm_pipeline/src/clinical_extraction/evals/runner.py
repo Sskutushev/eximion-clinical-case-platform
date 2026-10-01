@@ -1,7 +1,7 @@
 import logging
 import time
 
-from clinical_extraction.errors import ExtractionError, ProviderError
+from clinical_extraction.errors import ContentBlockedError, ExtractionError, ProviderError
 from clinical_extraction.evals.dataset import EvalExample
 from clinical_extraction.evals.metrics import (
     CaseReport,
@@ -23,6 +23,7 @@ def run_eval(
     *,
     provider_name: str,
     delay_seconds: float = 0.0,
+    max_attempts: int = 3,
 ) -> EvalSummary:
     """Extract every case in the dataset and score it against ground truth.
 
@@ -33,7 +34,7 @@ def run_eval(
     requests per minute, and without pacing the back half of a run is just 429s
     — which would show up as an extraction failure rather than a quota one.
     """
-    extractor = ClinicalCaseExtractor(provider)
+    extractor = ClinicalCaseExtractor(provider, max_attempts=max_attempts)
     reports: list[CaseReport] = []
 
     for index, example in enumerate(examples):
@@ -46,11 +47,12 @@ def run_eval(
                 "extraction failed during eval",
                 extra={"example_id": example.id, "error_type": type(exc).__name__},
             )
-            status = (
-                CaseStatus.PROVIDER_ERROR
-                if isinstance(exc, ProviderError)
-                else CaseStatus.SCHEMA_INVALID
-            )
+            if isinstance(exc, ContentBlockedError):
+                status = CaseStatus.MODEL_BLOCKED
+            elif isinstance(exc, ProviderError):
+                status = CaseStatus.PROVIDER_ERROR
+            else:
+                status = CaseStatus.SCHEMA_INVALID
             reports.append(
                 CaseReport(
                     example_id=example.id,

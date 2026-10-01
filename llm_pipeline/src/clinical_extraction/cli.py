@@ -58,9 +58,10 @@ def _run_eval(args: argparse.Namespace) -> int:
 
 def _run_extract(args: argparse.Namespace) -> int:
     raw_text = args.file.read_text(encoding="utf-8")
-    provider = GeminiProvider(get_extraction_settings())
+    settings = get_extraction_settings()
+    extractor = ClinicalCaseExtractor(GeminiProvider(settings), max_attempts=settings.max_attempts)
     try:
-        result = ClinicalCaseExtractor(provider).extract(raw_text)
+        result = extractor.extract(raw_text)
     except (ExtractionError, ValueError) as exc:
         print(f"extraction failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1

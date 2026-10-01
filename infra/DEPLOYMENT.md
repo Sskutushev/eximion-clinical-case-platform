@@ -9,7 +9,7 @@ Architecture:
 
 ```
 Artifact Registry ──► Cloud Run (frontend, public)
-                             │  server-side fetch, internal ingress
+                             │  server-side fetch, ID token
                              ▼
                       Cloud Run (backend, internal + LB)
                              │  Cloud SQL connector (private IP)
@@ -37,7 +37,8 @@ export TAG="$(git rev-parse --short HEAD)"
 gcloud config set project "${PROJECT_ID}"
 gcloud services enable run.googleapis.com sqladmin.googleapis.com \
   artifactregistry.googleapis.com secretmanager.googleapis.com \
-  cloudbuild.googleapis.com aiplatform.googleapis.com
+  cloudbuild.googleapis.com aiplatform.googleapis.com \
+  compute.googleapis.com servicenetworking.googleapis.com
 ```
 
 ## 1. Artifact Registry
@@ -196,6 +197,11 @@ gcloud run jobs deploy eximion-migrate \
 gcloud run jobs execute eximion-migrate --region="${REGION}" --wait
 ```
 
+This job carries no admin API key and does not need one. The production check
+for that key lives in `create_app()` rather than in `Settings`, precisely
+because Alembic loads the same settings without ever serving a request — putting
+that check on `Settings` would fail this job before it ran a single statement.
+
 Rollout order for a schema change: backwards-compatible DDL first, then the new
 revision, then drop what is no longer used in a later release. That keeps the
 previous revision runnable, which is what makes the rollback in §10 real.
@@ -213,9 +219,19 @@ gcloud run deploy eximion-backend \
   --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,DB_USER=${DB_USER},DB_NAME=${DB_NAME},INSTANCE_UNIX_SOCKET=/cloudsql/${INSTANCE_CONN},DB_POOL_SIZE=5,DB_MAX_OVERFLOW=2" \
   --min-instances=1 --max-instances=10 --concurrency=80 \
   --cpu=1 --memory=512Mi --timeout=30s \
-  --ingress=internal-and-cloud-load-balancing \
+  --ingress=all \
   --no-allow-unauthenticated
 ```
+
+**Why `--ingress=all` and not internal.** The backend is closed by IAM: without
+`roles/run.invoker` and a valid ID token nobody gets past the front door, on any
+network. Internal ingress would add a second lock, but it is a *network* control,
+and the frontend is not on the VPC — one Cloud Run service calling another over
+internal ingress has to egress through a VPC that counts as internal. Setting
+internal ingress without putting the frontend on that VPC does not harden the
+service, it breaks it, and it breaks the verification in §10 as well. Putting the
+frontend on a VPC for this is more moving parts than this system needs, so IAM
+alone is the trade — deliberately, not by oversight.
 
 **Connection pool sizing.** Cloud Run multiplies connections by instance count:
 `max-instances × (DB_POOL_SIZE + DB_MAX_OVERFLOW)` = `10 × 7` = **70** against

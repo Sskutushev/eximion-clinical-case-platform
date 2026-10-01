@@ -29,8 +29,12 @@ def liveness() -> HealthStatus:
 def readiness(session: SessionDep, response: Response) -> HealthStatus:
     try:
         session.execute(text("SELECT 1"))
-    except SQLAlchemyError:
-        logger.warning("readiness check failed: database unreachable", exc_info=True)
+    except SQLAlchemyError as exc:
+        # No traceback: a SQLAlchemy exception carries bound parameters.
+        logger.warning(
+            "readiness check failed: database unreachable",
+            extra={"error_type": type(exc).__name__},
+        )
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return HealthStatus(status="unavailable")
     return HealthStatus(status="ok")
