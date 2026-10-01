@@ -56,6 +56,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cases/{case_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate attempt statistics (counts only, never answers) */
+        get: operations["case_stats_api_v1_cases__case_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -123,6 +140,20 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /**
+         * CaseStats
+         * @description Aggregate attempt data. Carries no answers, so it cannot leak the key.
+         */
+        CaseStats: {
+            /** Average Score */
+            average_score: number;
+            /** Max Score */
+            max_score: number;
+            /** Outcomes */
+            outcomes: components["schemas"]["OutcomeCount"][];
+            /** Submissions */
+            submissions: number;
+        };
         /** CaseSummary */
         CaseSummary: {
             /**
@@ -172,6 +203,31 @@ export interface components {
             /** Value */
             value: string;
         };
+        /**
+         * FindingMeasurement
+         * @description Numeric value parsed from the finding text, with its reference range.
+         *
+         *     Derived and optional: the finding text remains the source of truth. This
+         *     exists so the interface can plot a value instead of burying it in a
+         *     sentence. Reference ranges are adult values shown as teaching context.
+         */
+        FindingMeasurement: {
+            /** Axis Max */
+            axis_max: number;
+            /** Axis Min */
+            axis_min: number;
+            flag: components["schemas"]["MeasurementFlag"];
+            /** Label */
+            label: string;
+            /** Reference High */
+            reference_high: number;
+            /** Reference Low */
+            reference_low: number;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -184,6 +240,17 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "unavailable";
+        };
+        /**
+         * MeasurementFlag
+         * @enum {string}
+         */
+        MeasurementFlag: "low" | "normal" | "high";
+        /** OutcomeCount */
+        OutcomeCount: {
+            /** Count */
+            count: number;
+            outcome: components["schemas"]["ScoreOutcome"];
         };
         /**
          * PatientSex
@@ -230,6 +297,11 @@ export interface components {
         /** PublicFinding */
         PublicFinding: {
             category: components["schemas"]["FindingCategory"];
+            /**
+             * Measurements
+             * @default []
+             */
+            measurements: components["schemas"]["FindingMeasurement"][];
             /** Value */
             value: string;
         };
@@ -418,6 +490,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoreResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    case_stats_api_v1_cases__case_id__stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseStats"];
                 };
             };
             /** @description Not Found */

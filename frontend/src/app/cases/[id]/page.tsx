@@ -3,11 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { submitDiagnosis } from "@/app/cases/[id]/actions";
+import { CaseStatsPanel } from "@/components/CaseStatsPanel";
 import { CaseView } from "@/components/CaseView";
 import { DiagnosisForm } from "@/components/DiagnosisForm";
+import { FindingsSummary } from "@/components/FindingsSummary";
 import { ArrowLeftIcon } from "@/components/icons";
 import { getTranslations } from "@/i18n/server";
-import { getCase } from "@/lib/api/cases";
+import { getCase, getCaseStats } from "@/lib/api/cases";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,7 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CasePage({ params }: Props) {
   const { id } = await params;
-  const [{ t }, result] = await Promise.all([getTranslations(), getCase(id)]);
+  const [{ t }, result, stats] = await Promise.all([
+    getTranslations(),
+    getCase(id),
+    getCaseStats(id),
+  ]);
 
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
@@ -42,8 +48,10 @@ export default async function CasePage({ params }: Props) {
 
       <div className="case-layout">
         <CaseView clinicalCase={result.data} t={t} />
-        <aside className="case-layout__aside">
+        <aside className="case-layout__aside stack">
           <DiagnosisForm action={action} />
+          <FindingsSummary clinicalCase={result.data} t={t} />
+          {stats.ok ? <CaseStatsPanel stats={stats.data} t={t} /> : null}
         </aside>
       </div>
     </div>
