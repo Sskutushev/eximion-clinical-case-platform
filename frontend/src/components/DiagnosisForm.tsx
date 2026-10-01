@@ -18,7 +18,7 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
   const hasError = state.status === "error";
 
   return (
-    <section className="panel" aria-labelledby={`${inputId}-heading`}>
+    <section className="panel reveal" aria-labelledby={`${inputId}-heading`}>
       <span className="eyebrow">Your answer</span>
       <h2 className="section-title" id={`${inputId}-heading`}>
         Your diagnosis
@@ -56,7 +56,7 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
           </p>
         ) : null}
 
-        <button type="submit" className="btn" disabled={pending} aria-busy={pending}>
+        <button type="submit" className="btn btn--shine" disabled={pending} aria-busy={pending}>
           {pending ? (
             <>
               <span className="spinner" aria-hidden="true" />

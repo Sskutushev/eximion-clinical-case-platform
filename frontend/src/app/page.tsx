@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
+import { TiltCard } from "@/components/TiltCard";
 import { AlertIcon, ArrowRightIcon, InboxIcon } from "@/components/icons";
 import { listCases } from "@/lib/api/cases";
 
@@ -17,7 +19,7 @@ export default async function HomePage() {
 
   return (
     <div className="stack">
-      <header>
+      <header className="reveal">
         <span className="eyebrow">Case library</span>
         <h1 className="page-title">Clinical cases</h1>
         <p className="page-lede">
@@ -46,19 +48,22 @@ export default async function HomePage() {
         </div>
       ) : (
         <ul className="case-grid">
-          {result.data.items.map((item) => (
-            <li key={item.id}>
-              <Link href={`/cases/${item.id}`} className="case-card">
-                <h2 className="case-card__title">{item.title}</h2>
-                <div className="case-card__foot">
-                  <time dateTime={item.created_at}>
-                    {dateFormat.format(new Date(item.created_at))}
-                  </time>
-                  <span className="case-card__cta">
-                    Solve <ArrowRightIcon />
-                  </span>
-                </div>
-              </Link>
+          {result.data.items.map((item, index) => (
+            <li key={item.id} className="reveal" style={{ "--i": index } as CSSProperties}>
+              <TiltCard className="tilt">
+                <Link href={`/cases/${item.id}`} className="case-card">
+                  <span className="case-card__spot" aria-hidden="true" />
+                  <h2 className="case-card__title">{item.title}</h2>
+                  <div className="case-card__foot">
+                    <time dateTime={item.created_at}>
+                      {dateFormat.format(new Date(item.created_at))}
+                    </time>
+                    <span className="case-card__cta">
+                      Solve <ArrowRightIcon />
+                    </span>
+                  </div>
+                </Link>
+              </TiltCard>
             </li>
           ))}
         </ul>

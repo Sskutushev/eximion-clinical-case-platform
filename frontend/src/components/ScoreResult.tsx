@@ -1,5 +1,6 @@
 import type { JSX, SVGProps } from "react";
 
+import { CountUp } from "@/components/CountUp";
 import { CheckIcon, CrossIcon, PartialIcon } from "@/components/icons";
 import type { ScoreOutcome, ScoreResponse } from "@/lib/api/types";
 
@@ -38,7 +39,9 @@ export function ScoreResult({
 
       <div>
         <p className="score">
-          <span className="score__value">{result.score}</span>
+          <span className="score__value">
+            <CountUp value={result.score} />
+          </span>
           <span className="score__max">/ {result.max_score}</span>
           <span className="visually-hidden">
             Score: {result.score} out of {result.max_score}
@@ -46,6 +49,7 @@ export function ScoreResult({
         </p>
         <div className="meter" role="presentation">
           <div className="meter__fill" style={{ width: `${percent}%` }} />
+          <div className="meter__shine" aria-hidden="true" />
         </div>
       </div>
 

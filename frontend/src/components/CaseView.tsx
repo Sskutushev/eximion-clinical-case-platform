@@ -30,7 +30,7 @@ export function CaseView({ clinicalCase }: { clinicalCase: PublicClinicalCase })
 
   return (
     <div className="stack">
-      <article className="panel">
+      <article className="panel reveal">
         <header>
           <span className="eyebrow">Clinical case</span>
           <h1 className="case-hero__title">{clinicalCase.title}</h1>
@@ -50,7 +50,7 @@ export function CaseView({ clinicalCase }: { clinicalCase: PublicClinicalCase })
         </section>
       </article>
 
-      <section className="panel" aria-labelledby="findings-heading">
+      <section className="panel reveal" aria-labelledby="findings-heading">
         <h2 className="section-title" id="findings-heading">
           Findings
         </h2>
@@ -58,7 +58,7 @@ export function CaseView({ clinicalCase }: { clinicalCase: PublicClinicalCase })
           {groups.map(({ category, items }) => {
             const Icon = CATEGORY_ICON[category];
             return (
-              <li key={category} className="finding-group">
+              <li key={category} className="finding-group scroll-reveal">
                 <h3 className="finding-group__head">
                   <Icon />
                   {CATEGORY_LABEL[category]}
