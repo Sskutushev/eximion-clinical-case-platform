@@ -29,6 +29,7 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 coverage/
+.vitest/
 
 # Eval output (real runs are committed explicitly from evals/results/)
 llm_pipeline/evals/out/
