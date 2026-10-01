@@ -1,0 +1,73 @@
+[project]
+name = "eximion-llm-pipeline"
+version = "1.0.0"
+description = "Structured clinical case extraction from raw text, with a deterministic eval harness."
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "google-genai>=2.26",
+    "tenacity>=9.1",
+]
+
+[project.scripts]
+clinical-extraction = "clinical_extraction.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clinical_extraction"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-cov>=7.0",
+    "mypy>=1.18",
+    "ruff>=0.13",
+    "jsonschema>=4.25",
+    "types-jsonschema>=4.26.0.20260518",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "B", "UP", "S", "SIM", "RUF", "C4", "PT", "RET",
+    "DTZ", "PIE", "PL", "ARG", "ERA", "BLE", "TRY", "FBT",
+]
+ignore = ["TRY003", "PLR0913"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["clinical_extraction"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "ARG001", "ARG002"]
+"src/clinical_extraction/evals/**" = ["T201"]
+"src/clinical_extraction/cli.py" = ["T201"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["clinical_extraction"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
