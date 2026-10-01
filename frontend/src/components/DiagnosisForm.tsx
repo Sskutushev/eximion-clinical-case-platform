@@ -33,7 +33,7 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
           aria-invalid={hasError || undefined}
         />
         <p id={hintId} className="hint">
-          Free text, e.g. “Acute appendicitis”. Case and punctuation do not matter.
+          Free text. Capitalisation, extra spaces and trailing punctuation do not matter.
         </p>
         {hasError ? (
           <p id={errorId} role="alert" className="error">

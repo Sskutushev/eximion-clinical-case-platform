@@ -47,6 +47,10 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "vitest.setup.ts",
+    "vitest.config.mts"
   ]
 }

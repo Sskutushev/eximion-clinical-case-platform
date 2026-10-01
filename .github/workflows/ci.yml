@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# No production secrets are needed: every check runs offline.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  backend:
+    name: Backend (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: eximion
+          POSTGRES_PASSWORD: eximion
+          POSTGRES_DB: eximion
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U eximion"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://eximion:eximion@localhost:5432/eximion
+      TEST_DATABASE_URL: postgresql+psycopg://eximion:eximion@localhost:5432/eximion_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.24"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Type check
+        run: uv run mypy app scripts tests alembic/env.py
+      - name: Migrations apply to an empty database
+        run: uv run alembic upgrade head
+      - name: Models match migrations (no drift)
+        run: uv run alembic check
+      - name: Tests with coverage gate
+        run: uv run pytest --cov
+      - name: OpenAPI contract is up to date
+        run: |
+          uv run python -m scripts.export_openapi
+          git diff --exit-code -- ../contracts/openapi.json \
+            || { echo "::error::contracts/openapi.json is stale - run make openapi"; exit 1; }
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Tests
+        run: npm run test
+      - name: Production build
+        run: npm run build
+      - name: Generated types match the OpenAPI contract
+        run: |
+          npm run generate:types
+          git diff --exit-code -- src/generated/api.d.ts \
+            || { echo "::error::generated types are stale - run make types"; exit 1; }
+
+  llm-pipeline:
+    name: LLM pipeline + offline eval
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: llm_pipeline
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.24"
+          enable-cache: true
+          cache-dependency-glob: llm_pipeline/uv.lock
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Type check
+        run: uv run mypy src tests
+      - name: Tests with coverage gate
+        run: uv run pytest --cov
+      - name: Deterministic eval (fake provider, no credentials)
+        run: uv run clinical-extraction eval --provider fake
+
+  docker:
+    name: Docker images + end-to-end smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and start the stack
+        run: docker compose up -d --build --wait
+      - name: Smoke test the vertical slice
+        run: ./scripts/smoke.sh
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  security:
+    name: Security checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.24"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Secret scan (full history)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Python dependency audit (backend)
+        run: uv run --directory backend --with pip-audit pip-audit --strict
+      - name: Python dependency audit (llm_pipeline)
+        run: uv run --directory llm_pipeline --with pip-audit pip-audit --strict
+      - name: Node dependency audit
+        working-directory: frontend
+        run: npm audit --audit-level=high
