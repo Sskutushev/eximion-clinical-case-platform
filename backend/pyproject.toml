@@ -1,0 +1,82 @@
+[project]
+name = "eximion-backend"
+version = "1.0.0"
+description = "Clinical case API: authoring, public case delivery and deterministic scoring."
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastapi>=0.118",
+    "uvicorn[standard]>=0.37",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "sqlalchemy>=2.0.43",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.16",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-cov>=7.0",
+    "hypothesis>=6.140",
+    "mypy>=1.18",
+    "ruff>=0.13",
+    "pip-audit>=2.9",
+    "httpx2>=2.13.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "B", "UP", "S", "SIM", "RUF", "C4", "PT", "RET",
+    "DTZ", "T20", "PIE", "PL", "ARG", "ERA", "BLE", "TRY", "FBT",
+]
+ignore = [
+    "PLR0913",  # FastAPI dependencies make long signatures idiomatic
+    "TRY003",   # short messages on custom exceptions are fine
+    "B008",     # FastAPI Depends() in defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "scripts"]
+known-third-party = ["alembic"]  # local alembic/ dir must not shadow the package
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "S105", "S106", "ARG001"]
+"scripts/**" = ["T201"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Security"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+exclude = ["alembic/versions/"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:"]

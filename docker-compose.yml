@@ -1,0 +1,62 @@
+# Local stack: PostgreSQL -> one-shot migration -> API -> Next.js.
+# Credentials below are local-only development defaults, not secrets.
+name: eximion
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: eximion
+      POSTGRES_PASSWORD: eximion
+      POSTGRES_DB: eximion
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eximion -d eximion"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Same image as the API, run once before it starts (mirrors the Cloud Run Job in prod).
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://eximion:eximion@postgres:5432/eximion
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    environment:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+psycopg://eximion:eximion@postgres:5432/eximion
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-local-dev-admin-key}
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_BASE_URL: http://backend:8000
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

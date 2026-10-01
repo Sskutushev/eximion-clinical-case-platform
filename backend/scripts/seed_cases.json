@@ -1,0 +1,40 @@
+[
+  {
+    "title": "Acute right lower quadrant pain",
+    "patient_age": 24,
+    "patient_sex": "male",
+    "presentation": "A 24-year-old man presents with 18 hours of periumbilical pain that migrated to the right lower quadrant, with nausea and loss of appetite.",
+    "findings": [
+      {"category": "symptom", "value": "Periumbilical pain migrating to the right lower quadrant"},
+      {"category": "symptom", "value": "Anorexia and nausea"},
+      {"category": "vital_sign", "value": "Temperature 38.1 °C"},
+      {"category": "physical_exam", "value": "Tenderness at McBurney's point with rebound"},
+      {"category": "laboratory", "value": "WBC 14.2 x10^9/L with neutrophilia"}
+    ],
+    "answers": [
+      {"text": "Acute appendicitis", "is_correct": true, "score_weight": 10},
+      {"text": "Appendicitis", "is_correct": true, "score_weight": 10},
+      {"text": "Mesenteric lymphadenitis", "is_correct": false, "score_weight": 3}
+    ],
+    "provenance": {"source": "manual"}
+  },
+  {
+    "title": "Sudden pleuritic chest pain after a long flight",
+    "patient_age": 41,
+    "patient_sex": "female",
+    "presentation": "A 41-year-old woman on combined oral contraceptives develops sudden pleuritic chest pain and dyspnea two days after a 12-hour flight.",
+    "findings": [
+      {"category": "history", "value": "Combined oral contraceptive use"},
+      {"category": "history", "value": "12-hour flight two days ago"},
+      {"category": "vital_sign", "value": "Heart rate 118/min, SpO2 91% on room air"},
+      {"category": "physical_exam", "value": "Swollen, tender left calf"},
+      {"category": "imaging", "value": "CT pulmonary angiography: filling defect in the right lower lobe artery"}
+    ],
+    "answers": [
+      {"text": "Pulmonary embolism", "is_correct": true, "score_weight": 10},
+      {"text": "PE", "is_correct": true, "score_weight": 10},
+      {"text": "Deep vein thrombosis", "is_correct": false, "score_weight": 4}
+    ],
+    "provenance": {"source": "manual"}
+  }
+]
