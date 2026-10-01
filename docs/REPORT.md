@@ -203,7 +203,12 @@ four failures:
 
 ## 6. Docker and GCP
 
-Both images are multi-stage and run as a non-root user: the backend resolves dependencies
+Three images, all multi-stage and running as a non-root user. `backend` and `frontend`
+are services; `llm_pipeline` is a batch container whose entry point is the extraction
+CLI, deployed as a Cloud Run Job rather than a service: extraction is authoring work,
+not request-path work, so it should neither idle nor be able to take traffic.
+
+For the two services: the backend resolves dependencies
 from `uv.lock` in a builder stage and ships only the venv and source; the frontend uses
 Next.js `output: "standalone"`, so the runtime image carries a minimal server rather than
 `node_modules`. Both read `PORT` from the environment, as Cloud Run requires, and no
@@ -213,8 +218,8 @@ same ordering as production.
 
 `infra/DEPLOYMENT.md` is the full runbook: Artifact Registry → images tagged with the
 commit SHA → Cloud SQL (PostgreSQL 17, private IP, PITR, regional) → Secret Manager →
-three least-privilege service accounts → migrations as a Cloud Run **Job** → backend and
-frontend services → smoke test and log check → rollback by traffic shift.
+four least-privilege service accounts → migrations as a Cloud Run **Job** → backend and
+frontend services → the extraction Job → smoke test and log check → rollback by traffic shift.
 
 Two deliberate decisions in there:
 
@@ -252,6 +257,7 @@ Everything below was run locally on this machine, and the numbers are the real o
 | Frontend tests | `vitest run` | **4 passed** |
 | Frontend build | `next build` | success |
 | Docker images | `docker compose up --build --wait` | all services healthy |
+| Extraction container | `docker run eximion-llm eval --provider fake` | uid 1001, eval passes in-container |
 | End-to-end smoke | `bash scripts/smoke.sh` | **SMOKE PASS** |
 
 **Not executed, and why:**

@@ -14,10 +14,10 @@ class ProviderError(ExtractionError):
 
 
 class SchemaValidationError(ExtractionError):
-    """The model returned JSON that does not satisfy the contract.
+    """The model returned JSON that breaks the contract.
 
-    Deliberately NOT retried and never repaired with a fallback: a malformed
-    clinical extraction must surface, not be guessed at.
+    Not retried, not patched with a fallback: a bad clinical extraction has to
+    surface rather than be guessed at.
     """
 
     def __init__(self, message: str, *, raw_response: str | None = None) -> None:

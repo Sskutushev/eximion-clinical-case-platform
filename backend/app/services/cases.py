@@ -1,4 +1,4 @@
-"""Use cases. Each public function owns exactly one database transaction."""
+"""Use cases. One database transaction per public function."""
 
 import uuid
 
@@ -58,7 +58,7 @@ def create_case(session: Session, payload: ClinicalCaseCreate) -> uuid.UUID:
 
 
 def get_public_case(session: Session, case_id: uuid.UUID) -> PublicClinicalCase:
-    # Only `findings` is loaded: the answer key is never even read on this path.
+    # Loads findings only: the answer key is never read on this path.
     case = session.scalar(
         select(ClinicalCase)
         .where(ClinicalCase.id == case_id)

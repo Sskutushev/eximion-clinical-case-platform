@@ -1,4 +1,4 @@
-"""Exception -> HTTP mapping. Clients never see stack traces, SQL or internal identifiers."""
+"""Exception -> HTTP. No stack traces, SQL or internal ids reach the client."""
 
 import logging
 

@@ -1,7 +1,7 @@
-"""Deterministic provider for tests, CI and offline eval runs.
+"""Deterministic provider for tests, CI and offline evals.
 
-Serves canned JSON keyed by the source text, so the pipeline (schema handling,
-validation, error paths, metrics) is exercised without credentials or network.
+Returns canned JSON keyed by the source text, so schema handling, validation,
+error paths and metrics are all exercised with no credentials and no network.
 """
 
 import json

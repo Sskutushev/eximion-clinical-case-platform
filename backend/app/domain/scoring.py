@@ -1,4 +1,4 @@
-"""Deterministic answer normalization and scoring. Pure functions: no I/O, no LLM."""
+"""Answer normalization and scoring. Pure functions: no I/O, no LLM."""
 
 import re
 import unicodedata
@@ -14,8 +14,8 @@ _EDGE_PUNCTUATION = " .,;:!?\"'()[]{}"
 def normalize_answer(text: str) -> str:
     """NFKC -> casefold -> collapse whitespace -> strip edge punctuation.
 
-    "  Acute  Appendicitis. " and "acute appendicitis" normalize to the same key.
-    Inner punctuation is preserved: "type 2 diabetes" != "type-2 diabetes".
+    "  Acute  Appendicitis. " and "acute appendicitis" give the same key.
+    Inner punctuation is kept: "type 2 diabetes" != "type-2 diabetes".
     """
     normalized = unicodedata.normalize("NFKC", text).casefold()
     normalized = _WHITESPACE.sub(" ", normalized)

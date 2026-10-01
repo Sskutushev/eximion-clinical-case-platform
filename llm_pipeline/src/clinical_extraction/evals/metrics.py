@@ -1,4 +1,4 @@
-"""Deterministic extraction metrics against hand-written ground truth.
+"""Extraction metrics against hand-written ground truth.
 
 No LLM-as-a-judge: every number here is reproducible from the dataset.
 """
@@ -15,7 +15,7 @@ _EDGE_PUNCTUATION = " .,;:!?\"'()[]{}"
 
 
 def normalize(text: str) -> str:
-    """Same normalization rule as the backend's scoring, so metrics match production matching."""
+    """The backend's scoring rule, so metrics match production matching."""
     normalized = unicodedata.normalize("NFKC", text).casefold()
     return _WHITESPACE.sub(" ", normalized).strip(_EDGE_PUNCTUATION)
 
@@ -71,8 +71,8 @@ def evaluate_case(
     if not sex_correct:
         mismatches.append("patient_sex")
 
-    # Answer key: the set of accepted correct diagnoses must match exactly —
-    # a missed synonym silently rejects valid physician answers in production.
+    # The accepted set must match exactly: a missed synonym would silently
+    # reject a valid physician answer in production.
     answer_key_correct = _answer_key(predicted) == _answer_key(expected)
     if not answer_key_correct:
         mismatches.append("answer_key")

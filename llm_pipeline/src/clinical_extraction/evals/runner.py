@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 def run_eval(
     provider: ExtractionProvider, examples: list[EvalExample], *, provider_name: str
 ) -> EvalSummary:
-    """Run extraction over the dataset and score it against ground truth.
+    """Extract every case in the dataset and score it against ground truth.
 
-    Failures are recorded as data points, never swallowed: a case that cannot be
-    extracted counts against schema_valid_rate.
+    Failures are recorded, not swallowed: a case that cannot be extracted counts
+    against schema_valid_rate.
     """
     extractor = ClinicalCaseExtractor(provider)
     reports: list[CaseReport] = []

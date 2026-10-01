@@ -1,7 +1,7 @@
-"""Fake-provider responses for the offline eval run.
+"""Fake-provider responses for the offline eval.
 
-Fixtures are the ground truth with small, deliberate defects, so the harness is
-proven to actually detect errors instead of always reporting a perfect score.
+Ground truth with small, deliberate defects, so the harness is shown to catch
+errors rather than always printing a perfect score.
 """
 
 import json

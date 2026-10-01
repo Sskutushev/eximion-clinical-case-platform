@@ -15,8 +15,8 @@ class ProviderResponse:
 class ExtractionProvider(Protocol):
     """Seam between the pipeline and a model vendor.
 
-    Keeping this a Protocol lets the extractor, the eval harness and the tests
-    run against a fake provider with no network access and no credentials.
+    A Protocol, so the extractor, the harness and the tests can run against a
+    fake provider with no network and no credentials.
     """
 
     @property

@@ -19,9 +19,9 @@ _SECURITY_HEADERS = [
 
 
 class RequestContextMiddleware:
-    """Request id propagation, security headers and one structured access-log line.
+    """Request id, security headers, one access-log line.
 
-    Pure ASGI (not BaseHTTPMiddleware) so it does not buffer responses.
+    Pure ASGI rather than BaseHTTPMiddleware, so responses are not buffered.
     """
 
     def __init__(self, app: ASGIApp) -> None:

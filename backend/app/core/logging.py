@@ -1,6 +1,6 @@
-"""Structured JSON logging on stdout (Cloud Logging parses `severity` and `message`).
+"""JSON logs on stdout; Cloud Logging reads `severity` and `message`.
 
-Policy: never log request/response bodies — they contain clinical text.
+Never log request or response bodies: they hold clinical text.
 """
 
 import json

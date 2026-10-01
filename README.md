@@ -9,13 +9,12 @@ raw clinical text ─► Gemini structured extraction ─► ClinicalCase ─►
                                    diagnosis ─► Server Action ─► deterministic scoring
 ```
 
-Physicians open a case, submit a diagnosis and get a score. Cases can be authored by
-hand or extracted from free clinical text by an LLM — both paths produce the same
-validated `ClinicalCase`, so there is exactly one schema to reason about.
+A physician opens a case, submits a diagnosis, gets a score. Cases are written by hand
+or extracted from free clinical text by an LLM. Both paths produce the same validated
+`ClinicalCase`, so there is one schema, not two.
 
-Built for the Eximion take-home assignment (three tasks: FastAPI + PostgreSQL,
-Next.js + TypeScript, LLM pipeline + GCP), deliberately as **one** repository rather
-than three: the three parts are one system joined by one contract.
+Eximion take-home assignment, all three tasks (FastAPI + PostgreSQL, Next.js +
+TypeScript, LLM pipeline + GCP) in one repository: they are one system, not three.
 
 ## Architecture
 
@@ -40,21 +39,24 @@ flowchart LR
 ```
 
 **The answer key never leaves the backend.** `PublicClinicalCase` has no answer fields,
-the public read path does not even load the `answers` relationship, and that invariant is
-asserted three ways: an API test on the raw HTTP body, a contract test on the published
-OpenAPI document, and the end-to-end smoke test (which also checks the rendered HTML).
+and the public read path does not even load the `answers` relationship. Checked three
+ways: an API test on the raw HTTP body, a contract test on the published OpenAPI, and
+the smoke test on the rendered HTML.
 
 ## Repository layout
 
 ```
 backend/        FastAPI, SQLAlchemy 2, Alembic, pytest        (Python 3.12)
 frontend/       Next.js App Router, TypeScript strict, vitest (Node 22)
-llm_pipeline/   Gemini extraction + eval harness             (Python 3.12)
-contracts/      openapi.json — the shared contract, committed and drift-checked
+llm_pipeline/   Gemini extraction + eval harness              (Python 3.12)
+contracts/      openapi.json — the shared contract, drift-checked in CI
 infra/          DEPLOYMENT.md — Cloud Run + Cloud SQL runbook
 scripts/        smoke.sh — end-to-end check of the real stack
 docs/           IMPLEMENTATION_PLAN.md, REPORT.md
 ```
+
+Three Dockerfiles: `backend` and `frontend` are services, `llm_pipeline` is a batch
+container (a Cloud Run Job in production).
 
 ## Quick start
 
@@ -189,13 +191,12 @@ erDiagram
     }
 ```
 
-Normalized, not a JSONB blob: findings and answers are queryable rows, each enum and
-range is a `CHECK`, answer uniqueness is a `UNIQUE` constraint, and `score <= max_score`
-is enforced by the database rather than trusted from the application. `JSONB` is used
-only for optional extraction provenance, which has no schema obligations.
+Rows, not a JSONB blob. Findings and answers are queryable; every enum and range is a
+`CHECK`; answer uniqueness is a `UNIQUE`; `score <= max_score` is enforced by the
+database, not trusted from the app. `JSONB` holds only optional extraction provenance.
 
-`case_submissions` uses `ON DELETE RESTRICT` — a case with recorded attempts cannot be
-deleted out from under its audit trail — while findings and answers cascade.
+Findings and answers cascade on delete. Submissions use `ON DELETE RESTRICT`: a case
+with recorded attempts keeps its audit trail.
 
 ## Scoring
 
@@ -211,10 +212,9 @@ the stored normalized key:
 | `Mesenteric lymphadenitis` | 3/10 — partially correct (differential) |
 | `Migraine` | 0/10 — incorrect |
 
-Case-folding is Unicode-aware (`Straße` → `strasse`) and inner punctuation is
-significant (`type-2 diabetes` ≠ `type 2 diabetes`), so the rule stays predictable.
-Feedback states the outcome but never reveals the correct answer — participants may
-retry, and `GET` must stay useless as an answer source.
+Case-folding is Unicode-aware (`Straße` → `strasse`); inner punctuation is significant
+(`type-2 diabetes` ≠ `type 2 diabetes`). Feedback gives the outcome, never the correct
+answer: attempts can be repeated, so no endpoint may become an answer source.
 
 ## Shared types
 
@@ -224,22 +224,21 @@ FastAPI's OpenAPI document is the single source of truth. There are no hand-copi
 make types     # backend → contracts/openapi.json → frontend/src/generated/api.d.ts
 ```
 
-Both artefacts are committed, and CI regenerates them and fails on any diff — the
-contract cannot drift from the code. The frontend consumes them through a typed
-`openapi-fetch` client; `llm_pipeline` validates its output against the same document
-in `tests/test_contract_alignment.py`.
+Both artefacts are committed. CI regenerates them and fails on any diff, so the
+contract cannot drift from the code. The frontend uses them through a typed
+`openapi-fetch` client; `llm_pipeline` validates its output against the same document.
 
 ## Frontend
 
-- **Server Component** (`/cases/[id]`) fetches and renders the case; `loading.tsx`,
-  `not-found.tsx` and `error.tsx` cover the non-happy paths.
-- **Client Component** owns only the interaction: the diagnosis form, its pending and
-  error states, and the result. It never computes a score.
-- Submission goes through a **Server Action**, so the browser never talks to the API.
-  `API_BASE_URL` is server-side only — no `NEXT_PUBLIC_*`, no CORS surface, no backend
-  URL in the bundle.
-- Backend failures are a discriminated result (`not_found | invalid | unavailable`)
-  rather than thrown strings, so every case is handled explicitly.
+- **Server Component** (`/cases/[id]`) fetches and renders the case. `loading.tsx`,
+  `not-found.tsx`, `error.tsx` cover the rest.
+- **Client Component** owns the interaction only: the form, its pending and error
+  states, the result. It never computes a score.
+- Submission goes through a **Server Action**, so the browser never calls the API.
+  `API_BASE_URL` is server-side only: no `NEXT_PUBLIC_*`, no CORS, no backend URL in
+  the bundle.
+- Backend failures are a typed result (`not_found | invalid | unavailable`), not thrown
+  strings, so each is handled explicitly.
 
 ## LLM extraction pipeline
 
@@ -251,35 +250,40 @@ uv run clinical-extraction eval --provider gemini    # real Vertex AI / Gemini r
 uv run clinical-extraction extract --file case.txt   # one case → POSTable JSON
 ```
 
-- **Structured output, not parsing.** Gemini is constrained by
-  `response_json_schema` at `temperature=0`; there is no regex or markdown scraping.
-- **Validation is mandatory.** Every response is validated with Pydantic. A schema
-  violation raises `SchemaValidationError` — never retried, never "repaired" with a
-  fallback. A malformed clinical extraction must surface loudly.
-- **Retries are narrow.** Bounded exponential backoff for transient provider errors
-  (429/5xx) only; 4xx and safety blocks fail immediately.
-- **The model does not diagnose.** It records only diagnoses the source text states,
-  and returns `null` for an unstated age or sex instead of estimating.
+Or in its container, which is what Cloud Run runs:
+
+```bash
+docker compose run --rm extraction eval --provider fake
+```
+
+- **Structured output, not parsing.** Gemini is constrained by `response_json_schema`
+  at `temperature=0`. No regex, no markdown scraping.
+- **Validation is mandatory.** Every response goes through Pydantic. A schema violation
+  raises `SchemaValidationError`: not retried, not patched with a fallback. A bad
+  clinical extraction has to be loud.
+- **Retries are narrow.** Bounded backoff for transient errors (429/5xx) only; 4xx and
+  safety blocks fail at once.
+- **The model does not diagnose.** It records only diagnoses the text states, and
+  returns `null` for an unstated age or sex instead of guessing.
 - **Provider boundary.** A `Protocol` with a Gemini implementation and a fake one, so
-  the pipeline, the harness and the tests run with no network and no credentials.
-- **Provenance.** Model name and prompt version travel with every extracted case.
-- **Logging.** Field paths and error counts, never clinical text.
+  pipeline, harness and tests run with no network and no credentials.
+- **Provenance.** Model name and prompt version travel with each extracted case.
+- **Logging.** Field paths and error types, never clinical text.
 
 ### Eval methodology
 
-`llm_pipeline/evals/dataset.jsonl` holds 10 synthetic, de-identified vignettes with
-hand-written ground truth, covering synonym answer keys, differentials, all seven
-finding categories and one case with unstated demographics.
+`llm_pipeline/evals/dataset.jsonl`: 10 synthetic, de-identified vignettes with
+hand-written ground truth. Covers synonym answer keys, differentials, all seven finding
+categories, and one case with no stated age or sex.
 
-Metrics are deterministic — no LLM-as-a-judge: `schema_valid_rate`, age/sex accuracy,
-`answer_key_accuracy` (exact set match of accepted correct diagnoses), findings
-precision / recall / F1, finding-category accuracy, `exact_case_match_rate`, plus the
-id and reason for every failure.
+Metrics are deterministic, no LLM-as-a-judge: `schema_valid_rate`, age/sex accuracy,
+`answer_key_accuracy` (exact set match of accepted diagnoses), findings precision /
+recall / F1, category accuracy, `exact_case_match_rate`, and the id and reason for each
+failure.
 
-The offline fixtures deliberately inject four known defects (a dropped finding, a
-missing synonym, a nulled age, an invalid category), so the harness is *proven* to
-detect errors instead of always reporting a perfect score. CI asserts those exact four
-failures and gates on the resulting metrics.
+The offline fixtures inject four known defects on purpose: a dropped finding, a missing
+synonym, a nulled age, an invalid category. So the harness is *shown* to catch errors
+rather than always printing a perfect score. CI asserts those exact four failures.
 
 > `--provider gemini` was **not** run for this submission: no GCP project with Vertex AI
 > billing was provisioned for the assignment. `evals/results/` therefore contains only

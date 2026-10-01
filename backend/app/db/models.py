@@ -1,4 +1,4 @@
-"""Persistence models. Internal only: never serialized directly to API clients."""
+"""Database models. Internal only: never serialized to a client."""
 
 import uuid
 from datetime import datetime
@@ -53,7 +53,7 @@ class ClinicalCase(Base):
     patient_age: Mapped[int | None] = mapped_column(SmallInteger)
     patient_sex: Mapped[str | None] = mapped_column(String(16))
     presentation: Mapped[str] = mapped_column(Text)
-    # Optional provenance (e.g. LLM model + prompt version). Never part of the domain model.
+    # Optional: LLM model + prompt version when the case came from extraction.
     provenance: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -95,7 +95,7 @@ class CaseFinding(Base):
 
 
 class CaseAnswer(Base):
-    """Answer key row. One case may accept several synonyms and partial-credit answers."""
+    """Answer key. A case may accept synonyms and give partial credit."""
 
     __tablename__ = "case_answers"
     __table_args__ = (
@@ -120,7 +120,7 @@ class CaseAnswer(Base):
 
 
 class CaseSubmission(Base):
-    """Immutable record of a scored attempt (audit trail for the competition)."""
+    """A scored attempt. Append-only: this is the competition audit trail."""
 
     __tablename__ = "case_submissions"
     __table_args__ = (
@@ -132,7 +132,7 @@ class CaseSubmission(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
     )
-    # RESTRICT: a case with submissions must not silently lose its audit trail.
+    # RESTRICT: never drop a case out from under its attempts.
     case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinical_cases.id", ondelete="RESTRICT"))
     matched_answer_id: Mapped[int | None] = mapped_column(
         ForeignKey("case_answers.id", ondelete="SET NULL"), index=True
