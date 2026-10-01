@@ -58,5 +58,16 @@ services:
       backend:
         condition: service_healthy
 
+  # On demand, not part of `up`:
+  #   docker compose run --rm extraction eval --provider fake
+  #   docker compose run --rm extraction extract --file /data/case.txt
+  extraction:
+    build: ./llm_pipeline
+    profiles: ["tools"]
+    environment:
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-us-central1}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+
 volumes:
   pgdata:

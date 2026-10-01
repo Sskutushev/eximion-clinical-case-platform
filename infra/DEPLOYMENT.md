@@ -31,6 +31,7 @@ export DB_USER="eximion_app"
 export BACKEND_SA="eximion-backend"
 export FRONTEND_SA="eximion-frontend"
 export MIGRATOR_SA="eximion-migrator"
+export EXTRACTION_SA="eximion-extraction"
 export TAG="$(git rev-parse --short HEAD)"
 
 gcloud config set project "${PROJECT_ID}"
@@ -57,11 +58,15 @@ is traceable to a commit and rollback is unambiguous.
 ```bash
 BACKEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/backend:${TAG}"
 FRONTEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/frontend:${TAG}"
+EXTRACTION_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/extraction:${TAG}"
 
 docker build --platform linux/amd64 -t "${BACKEND_IMAGE}" ./backend
 docker build --platform linux/amd64 -t "${FRONTEND_IMAGE}" ./frontend
+docker build --platform linux/amd64 -t "${EXTRACTION_IMAGE}" ./llm_pipeline
+
 docker push "${BACKEND_IMAGE}"
 docker push "${FRONTEND_IMAGE}"
+docker push "${EXTRACTION_IMAGE}"
 ```
 
 ## 3. Cloud SQL for PostgreSQL
@@ -105,7 +110,7 @@ image layer and never passed as `docker build --build-arg`.
 One identity per workload, each with only the roles it needs.
 
 ```bash
-for sa in "${BACKEND_SA}" "${FRONTEND_SA}" "${MIGRATOR_SA}"; do
+for sa in "${BACKEND_SA}" "${FRONTEND_SA}" "${MIGRATOR_SA}" "${EXTRACTION_SA}"; do
   gcloud iam service-accounts create "${sa}" --display-name="${sa}"
 done
 
@@ -132,6 +137,10 @@ gcloud secrets add-iam-policy-binding eximion-db-password \
   --role="roles/secretmanager.secretAccessor"
 
 # Frontend: no database, no secrets. It only needs to invoke the backend.
+
+# Extraction job: call Vertex AI, read the admin key to post cases. No database.
+gcloud projects add-iam-policy-binding "${PROJECT_ID}"   --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --role="roles/aiplatform.user"
+gcloud secrets add-iam-policy-binding eximion-admin-api-key   --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --role="roles/secretmanager.secretAccessor"
 ```
 
 ## 6. Migrations as a controlled step
@@ -208,7 +217,31 @@ gcloud run services add-iam-policy-binding eximion-backend \
 `API_BASE_URL` is read server-side only (it is not `NEXT_PUBLIC_*`), so the backend URL
 is never shipped to the browser.
 
-## 9. Verify, then roll back if needed
+## 9. Deploy the extraction pipeline (Cloud Run Job)
+
+Extraction is batch work: an editor feeds in clinical text and gets a case to review.
+It is not on a physician's request path, so it is a Job, not a service — no idle cost,
+no cold-start concern, and it cannot take traffic.
+
+```bash
+gcloud run jobs deploy eximion-extraction   --image="${EXTRACTION_IMAGE}"   --region="${REGION}"   --service-account="${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},GEMINI_MODEL=gemini-2.5-flash"   --cpu=1 --memory=1Gi --max-retries=1 --task-timeout=15m   --args="eval,--provider,gemini"
+```
+
+Run it, and check the accuracy of the current model and prompt:
+
+```bash
+gcloud run jobs execute eximion-extraction --region="${REGION}" --wait
+gcloud logging read   'resource.type="cloud_run_job" AND resource.labels.job_name="eximion-extraction"'   --limit=20 --freshness=10m
+```
+
+Notes:
+
+- Vertex AI is reached through the job's service account (ADC). There is no API key.
+- Run this after a model or prompt change: if the metrics drop, the change does not ship.
+- Extracted cases are written through `POST /api/v1/cases`, which needs the admin key —
+  so the job holds `secretmanager.secretAccessor` on `eximion-admin-api-key` and nothing else.
+
+## 10. Verify, then roll back if needed
 
 ```bash
 BACKEND_URL="$(gcloud run services describe eximion-backend --region="${REGION}" --format='value(status.url)')"
@@ -236,7 +269,7 @@ gcloud run services update-traffic eximion-backend \
 For a gradual rollout, split traffic instead: `--to-revisions="<new>=10,<previous>=90"`,
 watch the error rate, then move to 100%.
 
-## 10. Notes and limits
+## 11. Notes and limits
 
 - **Vertex AI / Gemini** uses the backend service account via Application Default
   Credentials — no API key is stored anywhere. Extraction is an authoring-time
