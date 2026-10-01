@@ -1,40 +1,647 @@
 [
   {
-    "title": "Acute right lower quadrant pain",
+    "title": "Migratory abdominal pain in a young man",
     "patient_age": 24,
     "patient_sex": "male",
-    "presentation": "A 24-year-old man presents with 18 hours of periumbilical pain that migrated to the right lower quadrant, with nausea and loss of appetite.",
+    "presentation": "A previously healthy 24-year-old man presents with 18 hours of pain that began around the umbilicus and has since settled in the right lower quadrant. He has vomited twice and has not eaten since yesterday. He reports no urinary symptoms and no diarrhoea.",
     "findings": [
-      {"category": "symptom", "value": "Periumbilical pain migrating to the right lower quadrant"},
-      {"category": "symptom", "value": "Anorexia and nausea"},
-      {"category": "vital_sign", "value": "Temperature 38.1 °C"},
-      {"category": "physical_exam", "value": "Tenderness at McBurney's point with rebound"},
-      {"category": "laboratory", "value": "WBC 14.2 x10^9/L with neutrophilia"}
+      {
+        "category": "symptom",
+        "value": "Periumbilical pain migrating to the right lower quadrant"
+      },
+      {
+        "category": "symptom",
+        "value": "Anorexia and two episodes of vomiting"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Temperature 38.1 °C"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Heart rate 96/min, blood pressure 124/78 mmHg"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Tenderness at McBurney's point with rebound and guarding"
+      },
+      {
+        "category": "laboratory",
+        "value": "White cell count 14.2 x10^9/L with neutrophilia"
+      },
+      {
+        "category": "laboratory",
+        "value": "Urinalysis: no nitrites, no leucocyte esterase"
+      },
+      {
+        "category": "imaging",
+        "value": "Abdominal ultrasound: non-compressible blind-ending tubular structure, 9 mm"
+      }
     ],
     "answers": [
-      {"text": "Acute appendicitis", "is_correct": true, "score_weight": 10},
-      {"text": "Appendicitis", "is_correct": true, "score_weight": 10},
-      {"text": "Mesenteric lymphadenitis", "is_correct": false, "score_weight": 3}
+      {
+        "text": "Acute appendicitis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Appendicitis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Mesenteric lymphadenitis",
+        "is_correct": false,
+        "score_weight": 3
+      },
+      {
+        "text": "Right ureteric colic",
+        "is_correct": false,
+        "score_weight": 1
+      }
     ],
-    "provenance": {"source": "manual"}
+    "provenance": {
+      "source": "manual"
+    }
   },
   {
-    "title": "Sudden pleuritic chest pain after a long flight",
+    "title": "Pleuritic chest pain after a long-haul flight",
     "patient_age": 41,
     "patient_sex": "female",
-    "presentation": "A 41-year-old woman on combined oral contraceptives develops sudden pleuritic chest pain and dyspnea two days after a 12-hour flight.",
+    "presentation": "A 41-year-old woman taking a combined oral contraceptive developed sudden right-sided pleuritic chest pain and breathlessness two days after a 12-hour flight. She has no cough and no fever.",
     "findings": [
-      {"category": "history", "value": "Combined oral contraceptive use"},
-      {"category": "history", "value": "12-hour flight two days ago"},
-      {"category": "vital_sign", "value": "Heart rate 118/min, SpO2 91% on room air"},
-      {"category": "physical_exam", "value": "Swollen, tender left calf"},
-      {"category": "imaging", "value": "CT pulmonary angiography: filling defect in the right lower lobe artery"}
+      {
+        "category": "history",
+        "value": "Combined oral contraceptive use"
+      },
+      {
+        "category": "history",
+        "value": "12-hour flight two days before onset"
+      },
+      {
+        "category": "symptom",
+        "value": "Sudden pleuritic chest pain with dyspnoea"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Heart rate 118/min, respiratory rate 24/min"
+      },
+      {
+        "category": "vital_sign",
+        "value": "SpO2 91% on room air"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Swollen, tender left calf"
+      },
+      {
+        "category": "laboratory",
+        "value": "D-dimer 3200 ng/mL"
+      },
+      {
+        "category": "imaging",
+        "value": "CT pulmonary angiography: filling defect in the right lower lobe artery"
+      }
     ],
     "answers": [
-      {"text": "Pulmonary embolism", "is_correct": true, "score_weight": 10},
-      {"text": "PE", "is_correct": true, "score_weight": 10},
-      {"text": "Deep vein thrombosis", "is_correct": false, "score_weight": 4}
+      {
+        "text": "Pulmonary embolism",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "PE",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Deep vein thrombosis",
+        "is_correct": false,
+        "score_weight": 4
+      },
+      {
+        "text": "Pneumothorax",
+        "is_correct": false,
+        "score_weight": 1
+      }
     ],
-    "provenance": {"source": "manual"}
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Crushing chest pressure with diaphoresis",
+    "patient_age": 63,
+    "patient_sex": "male",
+    "presentation": "A 63-year-old man with long-standing hypertension describes 45 minutes of crushing substernal pressure radiating to the left arm and jaw, with sweating and nausea. The pain did not settle with rest.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "Hypertension for 20 years, current smoker"
+      },
+      {
+        "category": "symptom",
+        "value": "Crushing substernal pressure radiating to the left arm and jaw"
+      },
+      {
+        "category": "symptom",
+        "value": "Diaphoresis and nausea"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Blood pressure 148/92 mmHg, heart rate 92/min"
+      },
+      {
+        "category": "imaging",
+        "value": "ECG: ST elevation in leads II, III and aVF with reciprocal change in I and aVL"
+      },
+      {
+        "category": "laboratory",
+        "value": "High-sensitivity troponin T 820 ng/L"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Inferior ST-elevation myocardial infarction",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Inferior STEMI",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "STEMI",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Myocardial infarction",
+        "is_correct": true,
+        "score_weight": 8
+      },
+      {
+        "text": "Unstable angina",
+        "is_correct": false,
+        "score_weight": 3
+      },
+      {
+        "text": "Acute pericarditis",
+        "is_correct": false,
+        "score_weight": 1
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Vomiting and deep breathing in a young woman",
+    "patient_age": 19,
+    "patient_sex": "female",
+    "presentation": "A 19-year-old woman is brought in after two days of vomiting, deep rapid breathing and increasing confusion. Over the preceding three weeks she lost 6 kg and had been drinking large volumes of water.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "6 kg unintentional weight loss over three weeks"
+      },
+      {
+        "category": "history",
+        "value": "Polydipsia and polyuria"
+      },
+      {
+        "category": "symptom",
+        "value": "Vomiting for two days with confusion"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Respiratory rate 28/min, Kussmaul pattern"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Heart rate 124/min, blood pressure 98/60 mmHg"
+      },
+      {
+        "category": "laboratory",
+        "value": "Capillary glucose 27 mmol/L"
+      },
+      {
+        "category": "laboratory",
+        "value": "Venous pH 7.18, bicarbonate 9 mmol/L"
+      },
+      {
+        "category": "laboratory",
+        "value": "Serum ketones 5.4 mmol/L"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Diabetic ketoacidosis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "DKA",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Hyperosmolar hyperglycaemic state",
+        "is_correct": false,
+        "score_weight": 3
+      },
+      {
+        "text": "Lactic acidosis",
+        "is_correct": false,
+        "score_weight": 1
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Fever and productive cough in an older smoker",
+    "patient_age": 72,
+    "patient_sex": "male",
+    "presentation": "A 72-year-old man with a 40 pack-year smoking history presents with three days of fever, productive cough with rust-coloured sputum and right-sided pleuritic pain. He is short of breath climbing one flight of stairs.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "40 pack-year smoking history"
+      },
+      {
+        "category": "symptom",
+        "value": "Productive cough with rust-coloured sputum"
+      },
+      {
+        "category": "symptom",
+        "value": "Right-sided pleuritic chest pain"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Temperature 38.9 °C, respiratory rate 24/min"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Crackles and dullness to percussion over the right lower zone"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Bronchial breathing with increased vocal resonance"
+      },
+      {
+        "category": "laboratory",
+        "value": "CRP 180 mg/L, white cell count 17.4 x10^9/L"
+      },
+      {
+        "category": "imaging",
+        "value": "Chest radiograph: right lower lobe consolidation with air bronchograms"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Community-acquired pneumonia",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Lobar pneumonia",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Pneumonia",
+        "is_correct": true,
+        "score_weight": 9
+      },
+      {
+        "text": "Pulmonary tuberculosis",
+        "is_correct": false,
+        "score_weight": 3
+      },
+      {
+        "text": "Lung cancer",
+        "is_correct": false,
+        "score_weight": 2
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Worst headache of her life",
+    "patient_age": 34,
+    "patient_sex": "female",
+    "presentation": "A 34-year-old woman describes a headache that reached maximum intensity within seconds while she was lifting weights. She vomited twice and now finds light uncomfortable. There is no limb weakness.",
+    "findings": [
+      {
+        "category": "symptom",
+        "value": "Thunderclap headache during exertion, maximal within seconds"
+      },
+      {
+        "category": "symptom",
+        "value": "Vomiting and photophobia"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Blood pressure 162/95 mmHg"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Painful neck flexion, no focal neurological deficit"
+      },
+      {
+        "category": "imaging",
+        "value": "Non-contrast head CT: hyperdensity in the basal cisterns"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Subarachnoid haemorrhage",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Subarachnoid hemorrhage",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "SAH",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Bacterial meningitis",
+        "is_correct": false,
+        "score_weight": 3
+      },
+      {
+        "text": "Migraine",
+        "is_correct": false,
+        "score_weight": 1
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Epigastric pain radiating to the back",
+    "patient_age": 58,
+    "patient_sex": "female",
+    "presentation": "A 58-year-old woman with known gallstones has 24 hours of severe epigastric pain boring through to the back, eased by leaning forward. She has vomited repeatedly and cannot keep fluids down.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "Known gallstones, no alcohol use"
+      },
+      {
+        "category": "symptom",
+        "value": "Epigastric pain radiating to the back, eased by leaning forward"
+      },
+      {
+        "category": "symptom",
+        "value": "Repeated vomiting"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Heart rate 104/min, temperature 37.8 °C"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Epigastric tenderness with voluntary guarding"
+      },
+      {
+        "category": "laboratory",
+        "value": "Serum lipase 1420 U/L (more than three times the upper limit)"
+      },
+      {
+        "category": "laboratory",
+        "value": "ALT 180 U/L, bilirubin 42 µmol/L"
+      },
+      {
+        "category": "imaging",
+        "value": "Abdominal ultrasound: gallstones with a dilated common bile duct"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Acute gallstone pancreatitis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Gallstone pancreatitis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Acute pancreatitis",
+        "is_correct": true,
+        "score_weight": 9
+      },
+      {
+        "text": "Perforated peptic ulcer",
+        "is_correct": false,
+        "score_weight": 2
+      },
+      {
+        "text": "Acute cholecystitis",
+        "is_correct": false,
+        "score_weight": 4
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Dysuria with flank pain and rigors",
+    "patient_age": 29,
+    "patient_sex": "female",
+    "presentation": "A 29-year-old woman reports three days of burning on passing urine and increased frequency, now with left-sided flank pain and an episode of shaking chills. She is not pregnant.",
+    "findings": [
+      {
+        "category": "symptom",
+        "value": "Dysuria and urinary frequency for three days"
+      },
+      {
+        "category": "symptom",
+        "value": "Left flank pain with rigors"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Temperature 38.6 °C, heart rate 108/min"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Left costovertebral angle tenderness"
+      },
+      {
+        "category": "laboratory",
+        "value": "Urinalysis: pyuria with positive nitrites"
+      },
+      {
+        "category": "laboratory",
+        "value": "Urine culture: Escherichia coli at 10^5 CFU/mL"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Acute pyelonephritis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Pyelonephritis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Uncomplicated cystitis",
+        "is_correct": false,
+        "score_weight": 4
+      },
+      {
+        "text": "Renal colic",
+        "is_correct": false,
+        "score_weight": 1
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Fatigue, cold intolerance and weight gain",
+    "patient_age": 46,
+    "patient_sex": "female",
+    "presentation": "A 46-year-old woman describes six weeks of fatigue, feeling cold when others do not, constipation and a 4 kg weight gain despite no change in diet. Her mother has autoimmune thyroid disease.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "Mother with autoimmune thyroid disease"
+      },
+      {
+        "category": "symptom",
+        "value": "Fatigue, cold intolerance and constipation"
+      },
+      {
+        "category": "symptom",
+        "value": "4 kg weight gain over six weeks"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Heart rate 54/min"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Diffusely firm, non-tender thyroid; delayed ankle reflex relaxation"
+      },
+      {
+        "category": "laboratory",
+        "value": "TSH 18.4 mIU/L with free T4 8.1 pmol/L"
+      },
+      {
+        "category": "laboratory",
+        "value": "Anti-thyroid peroxidase antibodies strongly positive"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Hashimoto thyroiditis",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Autoimmune hypothyroidism",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Primary hypothyroidism",
+        "is_correct": true,
+        "score_weight": 8
+      },
+      {
+        "text": "Iodine deficiency",
+        "is_correct": false,
+        "score_weight": 2
+      },
+      {
+        "text": "Depression",
+        "is_correct": false,
+        "score_weight": 1
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
+  },
+  {
+    "title": "Sudden painless loss of vision in one eye",
+    "patient_age": 68,
+    "patient_sex": "male",
+    "presentation": "A 68-year-old man with atrial fibrillation describes sudden, painless loss of vision in the right eye on waking, like a curtain coming down. Vision has not recovered over four hours.",
+    "findings": [
+      {
+        "category": "history",
+        "value": "Atrial fibrillation, not taking anticoagulation"
+      },
+      {
+        "category": "symptom",
+        "value": "Sudden painless monocular vision loss, curtain-like"
+      },
+      {
+        "category": "vital_sign",
+        "value": "Irregularly irregular pulse, 88/min"
+      },
+      {
+        "category": "physical_exam",
+        "value": "Right relative afferent pupillary defect"
+      },
+      {
+        "category": "imaging",
+        "value": "Fundoscopy: pale retina with a cherry-red spot at the macula"
+      },
+      {
+        "category": "imaging",
+        "value": "Carotid Doppler: 70% right internal carotid stenosis"
+      }
+    ],
+    "answers": [
+      {
+        "text": "Central retinal artery occlusion",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "CRAO",
+        "is_correct": true,
+        "score_weight": 10
+      },
+      {
+        "text": "Retinal artery occlusion",
+        "is_correct": true,
+        "score_weight": 9
+      },
+      {
+        "text": "Amaurosis fugax",
+        "is_correct": false,
+        "score_weight": 4
+      },
+      {
+        "text": "Retinal detachment",
+        "is_correct": false,
+        "score_weight": 2
+      }
+    ],
+    "provenance": {
+      "source": "manual"
+    }
   }
 ]
