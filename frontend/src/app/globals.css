@@ -153,6 +153,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Clears the sticky header when jumping to an anchor. */
+  scroll-padding-top: 6rem;
 }
 
 body {
@@ -246,7 +248,7 @@ body {
   padding-block: var(--gap-4);
   backdrop-filter: blur(var(--blur)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
-  background: linear-gradient(to bottom, rgb(var(--surface)), transparent);
+  background: color-mix(in oklab, var(--bg-base) 86%, transparent);
   border-bottom: 1px solid rgb(var(--hairline));
 }
 
@@ -1027,9 +1029,12 @@ a {
 /* Backdrop-filter is progressive enhancement: without it, panels stay opaque. */
 @supports not (backdrop-filter: blur(1px)) {
   .panel,
-  .case-card,
-  .site-header {
+  .case-card {
     background: var(--bg-elevated);
+  }
+
+  .site-header {
+    background: var(--bg-base);
   }
 }
 
@@ -1174,7 +1179,7 @@ a {
   @keyframes header-condense {
     to {
       padding-block: 0.625rem;
-      background: rgb(var(--surface-strong));
+      background: color-mix(in oklab, var(--bg-base) 94%, transparent);
       box-shadow: var(--shadow-ambient);
     }
   }

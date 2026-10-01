@@ -290,9 +290,21 @@ The offline fixtures inject four known defects on purpose: a dropped finding, a 
 synonym, a nulled age, an invalid category. So the harness is *shown* to catch errors
 rather than always printing a perfect score. CI asserts those exact four failures.
 
-> `--provider gemini` was **not** run for this submission: no GCP project with Vertex AI
-> billing was provisioned for the assignment. `evals/results/` therefore contains only
-> the offline run. Nothing is fabricated — see `docs/REPORT.md`.
+### Running it against the real model
+
+```bash
+export GEMINI_API_KEY="your-key"          # https://aistudio.google.com/apikey
+cd llm_pipeline && uv run clinical-extraction eval --provider gemini --delay 7
+```
+
+Or through Vertex AI, which is the production path and stores no key at all:
+set `GOOGLE_CLOUD_PROJECT` and run `gcloud auth application-default login`.
+
+`llm_pipeline/evals/results/gemini-2.5-flash.json` is a real run, committed as
+produced. It was made on a free tier whose quota runs out partway through, so it is a
+genuine but partial measurement — the completed cases are scored, the rest are recorded
+as quota errors rather than retried into looking better. See
+[`evals/results/README.md`](llm_pipeline/evals/results/README.md) for how to read it.
 
 ## Tests and checks
 

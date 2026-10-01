@@ -15,28 +15,9 @@ const clinicalCase: PublicClinicalCase = {
   patient_sex: "male",
   presentation: "Migratory abdominal pain for 18 hours.",
   findings: [
-    {
-      category: "laboratory",
-      value: "WBC 14.2 x10^9/L",
-      measurements: [
-        {
-          label: "White cell count",
-          value: 14.2,
-          unit: "x10^9/L",
-          reference_low: 4,
-          reference_high: 11,
-          axis_min: 0,
-          axis_max: 30,
-          flag: "high",
-        },
-      ],
-    },
-    {
-      category: "symptom",
-      value: "Pain migrating to the right lower quadrant",
-      measurements: [],
-    },
-    { category: "symptom", value: "Nausea", measurements: [] },
+    { category: "laboratory", value: "WBC 14.2 x10^9/L" },
+    { category: "symptom", value: "Pain migrating to the right lower quadrant" },
+    { category: "symptom", value: "Nausea" },
   ],
   created_at: "2026-10-01T10:00:00Z",
 };

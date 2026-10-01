@@ -285,11 +285,26 @@ Everything below was run locally on this machine, and the numbers are the real o
   provisioned for this assignment, so nothing was deployed to Cloud Run. The runbook is
   complete and reproducible, but I have not run it end to end, and I am not claiming a
   live URL.
-- **A real Gemini eval run.** `--provider gemini` needs those same credentials.
-  `evals/results/` therefore contains only the offline run. No numbers are fabricated:
-  the Gemini path is covered by tests against a stubbed SDK client (structured-output
-  configuration, error classification by HTTP status, empty-response handling), but it
-  has not been run against the live API.
+- **A complete Gemini eval run.** The pipeline *was* run against the live Gemini API,
+  and the result is committed as produced. It is partial: the run used a free tier whose
+  quota is exhausted partway through ten cases, so two cases were scored and eight are
+  recorded as provider errors. A full measurement needs a paid tier or a Vertex project.
+
+The live run was worth doing: it found two faults the offline harness could not.
+
+**Gemini could not accept the schema at all.** Constrained decoding rejected it with
+*"the specified schema produces a constraint that has too many states for serving"* —
+the length limits, numeric ranges and array bounds on the Pydantic contract. The model
+is now sent a simplified schema carrying the shape, enums and required fields, while
+Pydantic still enforces every bound on the response. Nothing is lost: the model guides
+generation, the validator decides what is acceptable.
+
+**My own metric was wrong twice.** A 429 counted against `schema_valid_rate`, which
+charged a quota failure to model accuracy — provider errors are now reported separately.
+And findings were compared by exact text, so a paraphrase ("Temperature 38.1 C" for
+"Temperature 38.1 °C") scored as a miss. Findings now match on token overlap, with the
+exact-text figure still reported as a strict lower bound. On the completed cases that is
+the difference between F1 0.32 and 0.62 — the same extraction, measured honestly.
 
 ---
 

@@ -16,6 +16,7 @@ from tenacity import (
 from clinical_extraction.errors import ProviderError, SchemaValidationError
 from clinical_extraction.prompt import PROMPT_VERSION, SYSTEM_INSTRUCTION, build_user_prompt
 from clinical_extraction.providers.base import ExtractionProvider
+from clinical_extraction.response_schema import simplify
 from clinical_extraction.schema import ClinicalCaseExtraction
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,8 @@ class ClinicalCaseExtractor:
     def __init__(self, provider: ExtractionProvider, *, max_attempts: int = 3) -> None:
         self._provider = provider
         self._max_attempts = max_attempts
-        self._json_schema = ClinicalCaseExtraction.model_json_schema()
+        # The model gets the shape; Pydantic enforces the bounds on the response.
+        self._json_schema = simplify(ClinicalCaseExtraction.model_json_schema())
 
     def extract(self, raw_text: str) -> ExtractionResult:
         """Extract a structured case.
