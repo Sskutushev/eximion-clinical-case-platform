@@ -6,6 +6,7 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StethoscopeIcon } from "@/components/icons";
 import { I18nProvider } from "@/i18n/client";
+import { direction } from "@/i18n/config";
 import { getTranslations } from "@/i18n/server";
 
 import "./globals.css";
@@ -31,7 +32,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { locale, t } = await getTranslations();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={direction(locale)} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
       </head>

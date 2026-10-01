@@ -1,40 +1,48 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useId, useTransition } from "react";
+import type { ChangeEvent } from "react";
 
 import { setLocale } from "@/app/actions";
-import { LOCALES, LOCALE_LABEL, LOCALE_NAME, type Locale } from "@/i18n/config";
+import { GlobeIcon } from "@/components/icons";
 import { useI18n } from "@/i18n/client";
+import { LOCALES, LOCALE_NAME, LOCALE_SHORT, type Locale, isLocale } from "@/i18n/config";
 
+/**
+ * Seven languages is past the point where a segmented control works, so this is
+ * a native select: it is keyboard accessible, screen-reader correct and renders
+ * as the platform picker on mobile for free.
+ */
 export function LocaleSwitcher() {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const id = useId();
 
-  const choose = (next: Locale) => {
-    if (next === locale) return;
+  const choose = (event: ChangeEvent<HTMLSelectElement>) => {
+    const next = event.target.value;
+    if (!isLocale(next) || next === locale) return;
     startTransition(async () => {
-      await setLocale(next);
-      // Server Components hold the translated markup, so re-render them.
+      await setLocale(next as Locale);
+      // The translated markup lives in Server Components, so re-render them.
       router.refresh();
     });
   };
 
   return (
-    <div className="segmented" role="group" aria-label={t.settings.language} data-pending={pending}>
-      {LOCALES.map((option) => (
-        <button
-          key={option}
-          type="button"
-          className="segmented__option"
-          aria-pressed={option === locale}
-          aria-label={LOCALE_NAME[option]}
-          onClick={() => choose(option)}
-        >
-          {LOCALE_LABEL[option]}
-        </button>
-      ))}
+    <div className="select" data-pending={pending}>
+      <GlobeIcon className="select__icon" />
+      <label className="visually-hidden" htmlFor={id}>
+        {t.settings.language}
+      </label>
+      <select id={id} value={locale} onChange={choose} disabled={pending}>
+        {LOCALES.map((option) => (
+          <option key={option} value={option}>
+            {LOCALE_SHORT[option]} · {LOCALE_NAME[option]}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
