@@ -1,5 +1,6 @@
 "use server";
 
+import { getTranslations } from "@/i18n/server";
 import { scoreCase } from "@/lib/api/cases";
 import type { ScoreResponse } from "@/lib/api/types";
 
@@ -19,14 +20,12 @@ export async function submitDiagnosis(
   _previous: ScoreFormState,
   formData: FormData,
 ): Promise<ScoreFormState> {
+  const { t } = await getTranslations();
   const raw = formData.get("answer");
   const answer = typeof raw === "string" ? raw.trim() : "";
 
   if (answer.length === 0 || answer.length > MAX_ANSWER_LENGTH) {
-    return {
-      status: "error",
-      message: `Please enter a diagnosis of up to ${MAX_ANSWER_LENGTH} characters.`,
-    };
+    return { status: "error", message: t.form.tooLong };
   }
 
   const result = await scoreCase(caseId, answer);
@@ -35,10 +34,10 @@ export async function submitDiagnosis(
   }
   switch (result.kind) {
     case "not_found":
-      return { status: "error", message: "This case is no longer available." };
+      return { status: "error", message: t.form.gone };
     case "invalid":
-      return { status: "error", message: "The diagnosis could not be accepted. Please revise it." };
+      return { status: "error", message: t.form.rejected };
     case "unavailable":
-      return { status: "error", message: "Scoring is temporarily unavailable. Please try again." };
+      return { status: "error", message: t.form.unavailable };
   }
 }

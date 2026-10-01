@@ -1,9 +1,13 @@
+import { getTranslations } from "@/i18n/server";
+
 /** Skeleton mirrors the real layout, so nothing jumps when the case lands. */
-export default function CaseLoading() {
+export default async function CaseLoading() {
+  const { t } = await getTranslations();
+
   return (
     <div className="stack" aria-busy="true">
       <span className="visually-hidden" role="status">
-        Loading clinical case
+        {t.case.loading}
       </span>
       <div className="case-layout">
         <div className="stack">

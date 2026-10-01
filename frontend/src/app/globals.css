@@ -7,25 +7,27 @@
 
 :root {
   /* --- palette ----------------------------------------------------------- */
-  --bg-base: #0a0f16;
-  --bg-elevated: #0e141d;
-  --glow-a: 199 89% 48%;   /* cyan   */
-  --glow-b: 173 80% 40%;   /* teal   */
-  --glow-c: 262 83% 58%;   /* violet */
+  --bg-base: #080b16;
+  --bg-deep: #05070f;
+  --bg-elevated: #10152a;
+  --glow-a: 199 95% 55%;   /* cyan    */
+  --glow-b: 265 90% 66%;   /* violet  */
+  --glow-c: 172 85% 50%;   /* teal    */
 
-  --surface: 255 255 255 / 0.045;
-  --surface-strong: 255 255 255 / 0.07;
-  --surface-sunken: 0 0 0 / 0.22;
-  --hairline: 255 255 255 / 0.1;
-  --hairline-strong: 255 255 255 / 0.16;
+  --surface: 148 163 255 / 0.055;
+  --surface-strong: 148 163 255 / 0.09;
+  --surface-sunken: 4 6 16 / 0.42;
+  --hairline: 165 180 255 / 0.13;
+  --hairline-strong: 165 180 255 / 0.26;
 
-  --text: #e8edf4;
-  --text-muted: #93a1b4;
-  --text-faint: #6b7a8f;
+  --text: #eef1fb;
+  --text-muted: #a3adc9;
+  --text-faint: #7c87a6;
 
   --accent: #38bdf8;
-  --accent-deep: #0ea5e9;
-  --accent-ink: #04121c;
+  --accent-2: #a78bfa;
+  --accent-deep: #0284c7;
+  --accent-ink: #04111f;
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #fb7185;
@@ -61,38 +63,82 @@
   color-scheme: dark;
 }
 
+/* Light tokens apply when the system asks for light and nothing overrides it,
+   or when the toggle sets data-theme="light". */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg-base: #f4f7fb;
+    --bg-base: #f5f7fc;
+    --bg-deep: #eef2fa;
     --bg-elevated: #ffffff;
+    --glow-a: 199 95% 60%;
+    --glow-b: 265 90% 72%;
+    --glow-c: 172 85% 55%;
 
-    --surface: 255 255 255 / 0.72;
-    --surface-strong: 255 255 255 / 0.88;
-    --surface-sunken: 15 23 42 / 0.04;
-    --hairline: 15 23 42 / 0.09;
-    --hairline-strong: 15 23 42 / 0.16;
+    --surface: 255 255 255 / 0.74;
+    --surface-strong: 255 255 255 / 0.92;
+    --surface-sunken: 30 41 90 / 0.045;
+    --hairline: 30 41 90 / 0.1;
+    --hairline-strong: 30 41 90 / 0.2;
 
-    --text: #0f1b2a;
-    --text-muted: #51637a;
-    --text-faint: #7b8aa0;
+    --text: #121a2e;
+    --text-muted: #4c5873;
+    --text-faint: #76829c;
 
     --accent: #0284c7;
+    --accent-2: #7c3aed;
     --accent-deep: #0369a1;
     --accent-ink: #ffffff;
     --success: #047857;
     --warning: #a16207;
     --danger: #be123c;
 
-    --shadow-ambient: 0 1px 2px rgb(15 23 42 / 0.06), 0 12px 28px -14px rgb(15 23 42 / 0.25);
-    --shadow-lift: 0 2px 6px rgb(15 23 42 / 0.08), 0 24px 44px -18px rgb(15 23 42 / 0.3);
-    --shadow-neu-raised: inset 0 1px 0 rgb(255 255 255 / 0.9),
-                         inset 0 -1px 0 rgb(15 23 42 / 0.06);
-    --shadow-neu-pressed: inset 0 2px 5px rgb(15 23 42 / 0.1),
-                          inset 0 -1px 0 rgb(255 255 255 / 0.6);
-    --shadow-accent: 0 8px 22px -8px rgb(2 132 199 / 0.45);
+    --shadow-ambient: 0 1px 2px rgb(30 41 90 / 0.06), 0 14px 32px -16px rgb(30 41 90 / 0.26);
+    --shadow-lift: 0 2px 6px rgb(30 41 90 / 0.08), 0 28px 52px -20px rgb(30 41 90 / 0.3);
+    --shadow-neu-raised: inset 0 1px 0 rgb(255 255 255 / 0.95),
+                         inset 0 -1px 0 rgb(30 41 90 / 0.06);
+    --shadow-neu-pressed: inset 0 2px 5px rgb(30 41 90 / 0.09),
+                          inset 0 -1px 0 rgb(255 255 255 / 0.7);
+    --shadow-accent: 0 10px 26px -10px rgb(2 132 199 / 0.5);
 
     color-scheme: light;
   }
+}
+
+:root[data-theme="light"] {
+  --bg-base: #f5f7fc;
+  --bg-deep: #eef2fa;
+  --bg-elevated: #ffffff;
+  --glow-a: 199 95% 60%;
+  --glow-b: 265 90% 72%;
+  --glow-c: 172 85% 55%;
+
+  --surface: 255 255 255 / 0.74;
+  --surface-strong: 255 255 255 / 0.92;
+  --surface-sunken: 30 41 90 / 0.045;
+  --hairline: 30 41 90 / 0.1;
+  --hairline-strong: 30 41 90 / 0.2;
+
+  --text: #121a2e;
+  --text-muted: #4c5873;
+  --text-faint: #76829c;
+
+  --accent: #0284c7;
+  --accent-2: #7c3aed;
+  --accent-deep: #0369a1;
+  --accent-ink: #ffffff;
+  --success: #047857;
+  --warning: #a16207;
+  --danger: #be123c;
+
+  --shadow-ambient: 0 1px 2px rgb(30 41 90 / 0.06), 0 14px 32px -16px rgb(30 41 90 / 0.26);
+  --shadow-lift: 0 2px 6px rgb(30 41 90 / 0.08), 0 28px 52px -20px rgb(30 41 90 / 0.3);
+  --shadow-neu-raised: inset 0 1px 0 rgb(255 255 255 / 0.95),
+                       inset 0 -1px 0 rgb(30 41 90 / 0.06);
+  --shadow-neu-pressed: inset 0 2px 5px rgb(30 41 90 / 0.09),
+                        inset 0 -1px 0 rgb(255 255 255 / 0.7);
+  --shadow-accent: 0 10px 26px -10px rgb(2 132 199 / 0.5);
+
+  color-scheme: light;
 }
 
 /* ============================================================================
@@ -112,7 +158,10 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg-base);
+  background:
+    radial-gradient(130% 90% at 50% -20%, var(--bg-elevated) 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep) 100%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -139,7 +188,7 @@ body {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .ambient::before {
@@ -1231,4 +1280,159 @@ a {
   .btn--shine::after {
     display: none;
   }
+}
+
+/* ============================================================================
+   Header controls: language segment + theme toggle
+   ========================================================================= */
+
+.site-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgb(var(--hairline));
+  background: rgb(var(--surface-sunken));
+  box-shadow: var(--shadow-neu-pressed);
+  transition: opacity 0.25s var(--ease);
+}
+
+.segmented[data-pending="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.segmented__option {
+  padding: 0.3125rem 0.6875rem;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.25s var(--ease), background 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.segmented__option:hover {
+  color: var(--text);
+}
+
+.segmented__option[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: linear-gradient(145deg, var(--accent), var(--accent-deep));
+  box-shadow: var(--shadow-accent), var(--shadow-neu-raised);
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid rgb(var(--hairline));
+  background: rgb(var(--surface-sunken));
+  color: var(--text-muted);
+  box-shadow: var(--shadow-neu-raised);
+  cursor: pointer;
+  transition: color 0.25s var(--ease), border-color 0.25s var(--ease),
+    transform 0.3s var(--ease);
+}
+
+.icon-btn:hover {
+  color: var(--accent);
+  border-color: rgb(var(--hairline-strong));
+  transform: translateY(-1px);
+}
+
+/* The two glyphs share one slot and rotate past each other. */
+.icon-btn__swap {
+  position: relative;
+  display: grid;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.icon-btn__swap svg {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.35s var(--ease), transform 0.45s var(--ease);
+}
+
+.icon-btn__swap svg:first-child { opacity: 1; transform: rotate(0) scale(1); }
+.icon-btn__swap svg:last-child  { opacity: 0; transform: rotate(-90deg) scale(0.5); }
+
+.icon-btn__swap[data-dark="true"] svg:first-child { opacity: 0; transform: rotate(90deg) scale(0.5); }
+.icon-btn__swap[data-dark="true"] svg:last-child  { opacity: 1; transform: rotate(0) scale(1); }
+
+/* ============================================================================
+   Extra depth: film grain, gradient edges, accent sweep
+   ========================================================================= */
+
+/* A faint grain breaks up the gradient banding that large blurs produce. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Title gets a subtle two-tone wash so it reads as the hero element. */
+.page-title,
+.case-hero__title {
+  background: linear-gradient(135deg, var(--text) 30%, var(--accent) 140%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The brand mark breathes. */
+.brand__mark {
+  position: relative;
+  overflow: hidden;
+}
+
+.brand__mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgb(255 255 255 / 0.45), transparent 60%);
+  transform: translateX(-120%);
+  animation: mark-sweep 6s var(--ease) infinite;
+}
+
+@keyframes mark-sweep {
+  0%, 70% { transform: translateX(-120%); }
+  100%    { transform: translateX(120%); }
+}
+
+/* Panels pick up a faint accent at the top-left corner. */
+.panel {
+  background-image: radial-gradient(
+    60rem circle at 0% 0%,
+    color-mix(in oklab, var(--accent) 7%, transparent),
+    transparent 45%
+  );
+}
+
+/* Input glows on focus rather than just outlining. */
+.field input:focus {
+  background: color-mix(in oklab, var(--accent) 4%, rgb(var(--surface-sunken)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand__mark::after { display: none; }
+  .icon-btn:hover { transform: none; }
 }

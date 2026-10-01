@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { AlertIcon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 
 export default function CaseError({
   error,
@@ -11,6 +12,8 @@ export default function CaseError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useI18n();
+
   useEffect(() => {
     // The digest ties this to a server log entry; no internals reach the user.
     console.error("case page failed", { digest: error.digest });
@@ -21,14 +24,14 @@ export default function CaseError({
       <AlertIcon />
       <div>
         <h1 className="page-title" style={{ fontSize: "1.5rem" }}>
-          Something went wrong
+          {t.case.errorTitle}
         </h1>
         <p className="hint" style={{ marginTop: "0.5rem" }}>
-          The case could not be loaded right now.
+          {t.case.errorBody}
         </p>
       </div>
       <button type="button" className="btn btn--ghost" onClick={reset}>
-        Try again
+        {t.case.retry}
       </button>
     </div>
   );

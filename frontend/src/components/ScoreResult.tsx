@@ -1,16 +1,16 @@
+"use client";
+
 import type { JSX, SVGProps } from "react";
 
 import { CountUp } from "@/components/CountUp";
 import { CheckIcon, CrossIcon, PartialIcon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 import type { ScoreOutcome, ScoreResponse } from "@/lib/api/types";
 
-const OUTCOME: Record<
-  ScoreOutcome,
-  { label: string; Icon: (p: SVGProps<SVGSVGElement>) => JSX.Element }
-> = {
-  correct: { label: "Correct", Icon: CheckIcon },
-  partially_correct: { label: "Partially correct", Icon: PartialIcon },
-  incorrect: { label: "Incorrect", Icon: CrossIcon },
+const OUTCOME_ICON: Record<ScoreOutcome, (p: SVGProps<SVGSVGElement>) => JSX.Element> = {
+  correct: CheckIcon,
+  partially_correct: PartialIcon,
+  incorrect: CrossIcon,
 };
 
 export function ScoreResult({
@@ -20,7 +20,9 @@ export function ScoreResult({
   result: ScoreResponse;
   submittedAnswer: string;
 }) {
-  const { label, Icon } = OUTCOME[result.outcome];
+  const { t } = useI18n();
+  const Icon = OUTCOME_ICON[result.outcome];
+  const label = t.result[result.outcome];
   const percent = result.max_score > 0 ? (result.score / result.max_score) * 100 : 0;
 
   return (
@@ -32,7 +34,7 @@ export function ScoreResult({
         <div>
           <p className="result__outcome">{label}</p>
           <p className="result__answer">
-            You answered: <q>{submittedAnswer}</q>
+            {t.result.answered}: <q>{submittedAnswer}</q>
           </p>
         </div>
       </div>
@@ -44,7 +46,7 @@ export function ScoreResult({
           </span>
           <span className="score__max">/ {result.max_score}</span>
           <span className="visually-hidden">
-            Score: {result.score} out of {result.max_score}
+            {t.result.score(result.score, result.max_score)}
           </span>
         </p>
         <div className="meter" role="presentation">

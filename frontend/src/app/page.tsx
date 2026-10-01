@@ -3,48 +3,42 @@ import type { CSSProperties } from "react";
 
 import { TiltCard } from "@/components/TiltCard";
 import { AlertIcon, ArrowRightIcon, InboxIcon } from "@/components/icons";
+import { getTranslations } from "@/i18n/server";
 import { listCases } from "@/lib/api/cases";
 
 export const dynamic = "force-dynamic";
 
-const dateFormat = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 export default async function HomePage() {
-  const result = await listCases();
+  const [{ locale, t }, result] = await Promise.all([getTranslations(), listCases()]);
+  const dateFormat = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
   return (
     <div className="stack">
       <header className="reveal">
-        <span className="eyebrow">Case library</span>
-        <h1 className="page-title">Clinical cases</h1>
-        <p className="page-lede">
-          Read the presentation, weigh the findings, commit to a diagnosis. Scoring is
-          instant and the same every time.
-        </p>
+        <span className="eyebrow">{t.home.eyebrow}</span>
+        <h1 className="page-title">{t.home.title}</h1>
+        <p className="page-lede">{t.home.lede}</p>
       </header>
 
       {!result.ok ? (
         <div className="notice" role="alert">
           <AlertIcon />
           <div>
-            <strong>Cases are unavailable right now.</strong>
+            <strong>{t.home.unavailableTitle}</strong>
             <p className="hint" style={{ marginTop: "0.25rem" }}>
-              The case service did not respond. Please try again shortly.
+              {t.home.unavailableBody}
             </p>
           </div>
         </div>
       ) : result.data.items.length === 0 ? (
         <div className="panel empty">
           <InboxIcon />
-          <p>
-            No cases yet. Create one with <code>POST /api/v1/cases</code> or run{" "}
-            <code>make seed</code>.
-          </p>
+          <p>{t.home.empty}</p>
         </div>
       ) : (
         <ul className="case-grid">
@@ -59,7 +53,7 @@ export default async function HomePage() {
                       {dateFormat.format(new Date(item.created_at))}
                     </time>
                     <span className="case-card__cta">
-                      Solve <ArrowRightIcon />
+                      {t.home.solve} <ArrowRightIcon />
                     </span>
                   </div>
                 </Link>

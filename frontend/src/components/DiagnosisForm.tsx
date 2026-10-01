@@ -5,12 +5,14 @@ import { useActionState, useId } from "react";
 import type { ScoreFormState } from "@/app/cases/[id]/actions";
 import { ScoreResult } from "@/components/ScoreResult";
 import { AlertIcon, StethoscopeIcon } from "@/components/icons";
+import { useI18n } from "@/i18n/client";
 
 type DiagnosisAction = (state: ScoreFormState, formData: FormData) => Promise<ScoreFormState>;
 
 const INITIAL: ScoreFormState = { status: "idle" };
 
 export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
+  const { t } = useI18n();
   const [state, formAction, pending] = useActionState(action, INITIAL);
   const inputId = useId();
   const hintId = useId();
@@ -19,14 +21,14 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
 
   return (
     <section className="panel reveal" aria-labelledby={`${inputId}-heading`}>
-      <span className="eyebrow">Your answer</span>
+      <span className="eyebrow">{t.form.eyebrow}</span>
       <h2 className="section-title" id={`${inputId}-heading`}>
-        Your diagnosis
+        {t.form.heading}
       </h2>
 
       <form action={formAction} className="form" noValidate>
         <label className="form__label" htmlFor={inputId}>
-          Most likely diagnosis
+          {t.form.label}
         </label>
 
         <div className="field">
@@ -38,7 +40,7 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
             required
             maxLength={300}
             autoComplete="off"
-            placeholder="Type a diagnosis…"
+            placeholder={t.form.placeholder}
             disabled={pending}
             aria-describedby={hasError ? `${hintId} ${errorId}` : hintId}
             aria-invalid={hasError || undefined}
@@ -46,7 +48,7 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
         </div>
 
         <p className="hint" id={hintId}>
-          Free text. Capitalisation, extra spaces and trailing punctuation do not matter.
+          {t.form.hint}
         </p>
 
         {hasError ? (
@@ -60,10 +62,10 @@ export function DiagnosisForm({ action }: { action: DiagnosisAction }) {
           {pending ? (
             <>
               <span className="spinner" aria-hidden="true" />
-              Scoring…
+              {t.form.pending}
             </>
           ) : (
-            "Submit diagnosis"
+            t.form.submit
           )}
         </button>
       </form>
