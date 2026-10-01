@@ -4,9 +4,16 @@ from typing import Any
 
 import pytest
 
-from clinical_extraction import ClinicalCaseExtractor, ProviderError, SchemaValidationError
+from clinical_extraction import (
+    ClinicalCaseExtractor,
+    ContentBlockedError,
+    ProviderError,
+    SchemaValidationError,
+)
 from clinical_extraction.prompt import PROMPT_VERSION, SYSTEM_INSTRUCTION
 from clinical_extraction.providers.fake import FAKE_MODEL, FakeProvider
+from clinical_extraction.schema import ClinicalCaseExtraction
+from clinical_extraction.scoring_policy import DIFFERENTIAL_WEIGHT, ESTABLISHED_DIAGNOSIS_WEIGHT
 
 RAW_TEXT = "A 24-year-old man with right lower quadrant pain. Diagnosis: acute appendicitis."
 
@@ -56,7 +63,7 @@ def test_non_json_output_raises_schema_error() -> None:
         ({"title": ""}, "blank title"),
         ({"hallucinated_field": "x"}, "unknown field"),
         (
-            {"answers": [{"text": "Appendicitis", "is_correct": False, "score_weight": 0}]},
+            {"answers": [{"text": "Appendicitis", "is_correct": False}]},
             "no established diagnosis",
         ),
         ({"findings": [{"category": "vibes", "value": "x"}]}, "category outside the enum"),
@@ -146,3 +153,32 @@ def test_validation_failures_do_not_log_clinical_values(
     record = next(r for r in caplog.records if r.message == "extraction failed schema validation")
     assert record.exc_info is None
     assert record.__dict__["fields"] == ["patient_age"]
+
+
+def test_the_model_is_never_asked_to_score_a_diagnosis() -> None:
+    """Weighting a differential 'by clinical proximity' is an invented number."""
+    assert "score_weight" not in SYSTEM_INSTRUCTION
+    assert "do not score them" in SYSTEM_INSTRUCTION
+    assert "score_weight" not in str(ClinicalCaseExtraction.model_json_schema())
+
+
+def test_weights_are_applied_by_policy_not_by_the_model(
+    valid_extraction: dict[str, Any],
+) -> None:
+    result = ClinicalCaseExtractor(FakeProvider.returning(valid_extraction)).extract(RAW_TEXT)
+
+    payload = result.to_case_create_payload()
+    answers = payload["answers"]
+    assert isinstance(answers, list)
+    by_text = {a["text"]: a["score_weight"] for a in answers}
+    assert by_text["Acute appendicitis"] == ESTABLISHED_DIAGNOSIS_WEIGHT
+    assert by_text["Mesenteric lymphadenitis"] == DIFFERENTIAL_WEIGHT
+
+
+def test_a_blocked_response_is_not_a_transport_failure() -> None:
+    """Content filtering is the model declining, not the provider being down."""
+    error = ContentBlockedError("blocked", feedback="SAFETY")
+
+    assert isinstance(error, ProviderError)
+    assert error.retryable is False
+    assert error.feedback == "SAFETY"

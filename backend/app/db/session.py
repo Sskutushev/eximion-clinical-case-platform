@@ -12,6 +12,9 @@ def build_engine(settings: Settings) -> Engine:
         pool_timeout=settings.db_pool_timeout_seconds,
         pool_recycle=settings.db_pool_recycle_seconds,
         pool_pre_ping=True,
+        # SQLAlchemy puts bound parameters into exception messages. Those
+        # parameters are clinical text, so they must never reach a log.
+        hide_parameters=True,
         connect_args={"connect_timeout": settings.db_connect_timeout_seconds},
     )
 

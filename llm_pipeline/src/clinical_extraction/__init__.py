@@ -1,4 +1,5 @@
 from clinical_extraction.errors import (
+    ContentBlockedError,
     ExtractionError,
     ProviderError,
     SchemaValidationError,
@@ -14,6 +15,7 @@ __all__ = [
     "AnswerExtraction",
     "ClinicalCaseExtraction",
     "ClinicalCaseExtractor",
+    "ContentBlockedError",
     "ExtractionError",
     "FindingExtraction",
     "ProviderError",

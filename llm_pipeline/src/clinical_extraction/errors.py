@@ -13,6 +13,19 @@ class ProviderError(ExtractionError):
         self.retryable = retryable
 
 
+class ContentBlockedError(ProviderError):
+    """The model returned nothing because content filtering stopped it.
+
+    A different thing from a quota or transport failure: the request reached the
+    model and the model declined. Retrying will not help, and the eval reports
+    it separately so a blocked case is not mistaken for an outage.
+    """
+
+    def __init__(self, message: str, *, feedback: str | None = None) -> None:
+        super().__init__(message, retryable=False)
+        self.feedback = feedback
+
+
 class SchemaValidationError(ExtractionError):
     """The model returned JSON that breaks the contract.
 

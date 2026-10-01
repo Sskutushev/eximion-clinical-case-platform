@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { api } from "@/lib/api/client";
 import type {
   ApiResult,
@@ -31,7 +33,11 @@ export async function listCases(): Promise<ApiResult<CaseList>> {
   }
 }
 
-export async function getCase(caseId: string): Promise<ApiResult<PublicClinicalCase>> {
+/**
+ * Wrapped in `cache` so the page and its `generateMetadata` share one request
+ * per render instead of fetching the case twice.
+ */
+export const getCase = cache(async (caseId: string): Promise<ApiResult<PublicClinicalCase>> => {
   if (!isUuid(caseId)) return { ok: false, kind: "not_found" };
   try {
     const { data, response } = await api.GET("/api/v1/cases/{case_id}", {
@@ -42,7 +48,7 @@ export async function getCase(caseId: string): Promise<ApiResult<PublicClinicalC
     console.error("getCase: backend unreachable", { error: String(error) });
     return { ok: false, kind: "unavailable" };
   }
-}
+});
 
 export async function getCaseStats(caseId: string): Promise<ApiResult<CaseStats>> {
   if (!isUuid(caseId)) return { ok: false, kind: "not_found" };

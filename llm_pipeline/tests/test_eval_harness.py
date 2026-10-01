@@ -4,8 +4,10 @@ from pathlib import Path
 import pytest
 
 from clinical_extraction.cli import FAKE_THRESHOLDS, main
+from clinical_extraction.errors import ContentBlockedError, ProviderError
 from clinical_extraction.evals.dataset import DEFAULT_DATASET, load_dataset
 from clinical_extraction.evals.fixtures import INJECTED_DEFECTS, build_fixtures
+from clinical_extraction.evals.metrics import CaseReport, CaseStatus, summarize
 from clinical_extraction.evals.runner import run_eval
 from clinical_extraction.providers.fake import FakeProvider
 
@@ -96,3 +98,28 @@ def test_dataset_errors_are_explicit(tmp_path: Path) -> None:
     empty.write_text("\n", encoding="utf-8")
     with pytest.raises(ValueError, match="no examples"):
         load_dataset(empty)
+
+
+def test_quota_and_block_failures_are_counted_apart_from_schema_failures() -> None:
+    """A 429 is not the model's fault, and a safety block is not an outage."""
+    reports = [
+        CaseReport(example_id="ok", status=CaseStatus.SCORED),
+        CaseReport(
+            example_id="quota",
+            status=CaseStatus.PROVIDER_ERROR,
+            error=str(ProviderError("429", retryable=True)),
+        ),
+        CaseReport(
+            example_id="blocked",
+            status=CaseStatus.MODEL_BLOCKED,
+            error=str(ContentBlockedError("blocked")),
+        ),
+        CaseReport(example_id="bad-schema", status=CaseStatus.SCHEMA_INVALID, error="invalid"),
+    ]
+
+    summary = summarize(reports, provider="gemini", model="m", prompt_version="v2")
+
+    assert (summary.total, summary.scored) == (4, 1)
+    assert (summary.provider_errors, summary.model_blocked) == (1, 1)
+    # One valid response out of the two that actually reached the model.
+    assert summary.schema_valid_rate == 0.5
