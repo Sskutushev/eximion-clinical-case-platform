@@ -42,15 +42,3 @@ def test_stats_never_expose_answers(client: TestClient, created_case_id: str) ->
 
 def test_stats_for_unknown_case_return_404(client: TestClient) -> None:
     assert client.get(f"/api/v1/cases/{uuid.uuid4()}/stats").status_code == 404
-
-
-def test_public_case_carries_parsed_measurements(client: TestClient, created_case_id: str) -> None:
-    findings = client.get(f"/api/v1/cases/{created_case_id}").json()["findings"]
-
-    by_value = {f["value"]: f["measurements"] for f in findings}
-    lab = by_value["WBC 14.2 x10^9/L"]
-    assert lab[0]["label"] == "White cell count"
-    assert lab[0]["value"] == 14.2
-    assert lab[0]["flag"] == "high"
-    # A finding with no number is still returned, just without a plot.
-    assert by_value["Pain migrating to the right lower quadrant"] == []

@@ -7,22 +7,30 @@ API="${API_BASE_URL:-http://localhost:8000}"
 WEB="${WEB_BASE_URL:-http://localhost:3000}"
 ADMIN_KEY="${ADMIN_API_KEY:-local-dev-admin-key}"
 
+# A private Cloud Run backend requires a Google-signed ID token. Export
+# ID_TOKEN="$(gcloud auth print-identity-token)" to run this against one.
+AUTH=()
+if [ -n "${ID_TOKEN:-}" ]; then
+  AUTH=(-H "Authorization: Bearer ${ID_TOKEN}")
+  echo "using an identity token against ${API}"
+fi
+
 fail() { echo "SMOKE FAIL: $*" >&2; exit 1; }
 ok() { echo "  ok  $*"; }
 
 echo "1. health"
-curl -fsS "${API}/health" | grep -q '"ok"' || fail "liveness"
-curl -fsS "${API}/health/ready" | grep -q '"ok"' || fail "readiness (database)"
+curl -fsS "${AUTH[@]}" "${API}/health" | grep -q '"ok"' || fail "liveness"
+curl -fsS "${AUTH[@]}" "${API}/health/ready" | grep -q '"ok"' || fail "readiness (database)"
 ok "api is live and the database is reachable"
 
 echo "2. authoring requires the admin key"
-status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/cases" \
+status=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" -X POST "${API}/api/v1/cases" \
   -H 'Content-Type: application/json' --data '{}')
 [ "${status}" = "401" ] || fail "unauthenticated authoring returned ${status}, expected 401"
 ok "POST /cases rejects requests without the admin key"
 
 echo "3. create a case"
-created=$(curl -fsS -X POST "${API}/api/v1/cases" \
+created=$(curl -fsS "${AUTH[@]}" -X POST "${API}/api/v1/cases" \
   -H 'Content-Type: application/json' -H "X-Admin-API-Key: ${ADMIN_KEY}" \
   --data '{
     "title": "Smoke test case",
@@ -43,7 +51,7 @@ case_id=$(printf '%s' "${created}" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\
 ok "created case ${case_id}"
 
 echo "4. the public read must not leak the answer key"
-public=$(curl -fsS "${API}/api/v1/cases/${case_id}")
+public=$(curl -fsS "${AUTH[@]}" "${API}/api/v1/cases/${case_id}")
 for leaked in appendicitis lymphadenitis is_correct score_weight answers; do
   if printf '%s' "${public}" | tr '[:upper:]' '[:lower:]' | grep -q "${leaked}"; then
     fail "public case exposes '${leaked}'"
@@ -53,27 +61,27 @@ printf '%s' "${public}" | grep -q 'right lower quadrant' || fail "findings missi
 ok "answer key is not reachable through GET /cases/{id}"
 
 echo "5. scoring"
-correct=$(curl -fsS -X POST "${API}/api/v1/cases/${case_id}/score" \
+correct=$(curl -fsS "${AUTH[@]}" -X POST "${API}/api/v1/cases/${case_id}/score" \
   -H 'Content-Type: application/json' --data '{"answer": "  ACUTE   Appendicitis. "}')
 printf '%s' "${correct}" | grep -q '"score":10' || fail "normalized correct answer not scored 10: ${correct}"
 printf '%s' "${correct}" | grep -q '"outcome":"correct"' || fail "outcome not correct: ${correct}"
 ok "normalized correct answer scores 10/10"
 
-partial=$(curl -fsS -X POST "${API}/api/v1/cases/${case_id}/score" \
+partial=$(curl -fsS "${AUTH[@]}" -X POST "${API}/api/v1/cases/${case_id}/score" \
   -H 'Content-Type: application/json' --data '{"answer": "Mesenteric lymphadenitis"}')
 printf '%s' "${partial}" | grep -q '"outcome":"partially_correct"' || fail "partial credit: ${partial}"
 ok "differential answer scores partial credit"
 
-wrong=$(curl -fsS -X POST "${API}/api/v1/cases/${case_id}/score" \
+wrong=$(curl -fsS "${AUTH[@]}" -X POST "${API}/api/v1/cases/${case_id}/score" \
   -H 'Content-Type: application/json' --data '{"answer": "Migraine"}')
 printf '%s' "${wrong}" | grep -q '"score":0' || fail "wrong answer not scored 0: ${wrong}"
 ok "incorrect answer scores 0"
 
 echo "6. unknown case and invalid input"
-status=$(curl -s -o /dev/null -w '%{http_code}' \
+status=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" \
   "${API}/api/v1/cases/00000000-0000-4000-8000-000000000000")
 [ "${status}" = "404" ] || fail "unknown case returned ${status}, expected 404"
-status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/cases/${case_id}/score" \
+status=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" -X POST "${API}/api/v1/cases/${case_id}/score" \
   -H 'Content-Type: application/json' --data '{"answer": "   "}')
 [ "${status}" = "422" ] || fail "blank answer returned ${status}, expected 422"
 ok "error paths behave"

@@ -58,6 +58,11 @@ docs/           IMPLEMENTATION_PLAN.md, REPORT.md
 Three Dockerfiles: `backend` and `frontend` are services, `llm_pipeline` is a batch
 container (a Cloud Run Job in production).
 
+The interface is available in seven languages, including Arabic with a
+right-to-left layout, and in a light and a dark theme. Clinical content is never
+translated: a translated finding is a clinical claim, and this system should not
+make one.
+
 ## Quick start
 
 Requires Docker, and (for running from source) Python 3.12 with [uv](https://docs.astral.sh/uv/)
@@ -78,7 +83,7 @@ bash scripts/smoke.sh                  # proves the whole slice works
 | http://localhost:8000/docs | interactive API (local/test only — disabled in production) |
 | http://localhost:8000/health/ready | readiness, including the database |
 
-Load two demo cases to click through:
+Load ten demo cases to click through:
 
 ```bash
 cd backend && uv sync && uv run python -m scripts.seed
@@ -285,17 +290,29 @@ The offline fixtures inject four known defects on purpose: a dropped finding, a 
 synonym, a nulled age, an invalid category. So the harness is *shown* to catch errors
 rather than always printing a perfect score. CI asserts those exact four failures.
 
-> `--provider gemini` was **not** run for this submission: no GCP project with Vertex AI
-> billing was provisioned for the assignment. `evals/results/` therefore contains only
-> the offline run. Nothing is fabricated — see `docs/REPORT.md`.
+### Running it against the real model
+
+```bash
+export GEMINI_API_KEY="your-key"          # https://aistudio.google.com/apikey
+cd llm_pipeline && uv run clinical-extraction eval --provider gemini --delay 7
+```
+
+Or through Vertex AI, which is the production path and stores no key at all:
+set `GOOGLE_CLOUD_PROJECT` and run `gcloud auth application-default login`.
+
+`llm_pipeline/evals/results/gemini-2.5-flash.json` is a real run, committed as
+produced. It was made on a free tier whose quota runs out partway through, so it is a
+genuine but partial measurement — the completed cases are scored, the rest are recorded
+as quota errors rather than retried into looking better. See
+[`evals/results/README.md`](llm_pipeline/evals/results/README.md) for how to read it.
 
 ## Tests and checks
 
 | Suite | What it covers |
 |---|---|
-| `backend` — 41 tests, 98% | real PostgreSQL via Alembic; create/read/score; answer-key non-leakage on the raw body; normalization; submission persistence; transaction rollback; migration up/down/up; drift check; production fail-closed config; 503 readiness; no internals in errors |
+| `backend` — 53 tests, 98% | real PostgreSQL via Alembic; create/read/score; answer-key non-leakage on the raw body; normalization; submission persistence; transaction rollback; migration up/down/up; drift check; production fail-closed config; 503 readiness; no internals in errors |
 | `llm_pipeline` — 48 tests, 94% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK |
-| `frontend` — 4 tests | form submission, pending state, score rendering, accessible error handling, finding grouping |
+| `frontend` — 34 tests | form submission, pending state, score rendering, accessible error handling, finding grouping, dictionary completeness across seven locales, Cloud Run identity tokens |
 | `scripts/smoke.sh` | the real stack: auth required, create → read → score → persist, answer key absent from both API and rendered HTML |
 
 ```bash

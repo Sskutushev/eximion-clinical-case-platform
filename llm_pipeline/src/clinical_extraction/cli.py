@@ -36,7 +36,7 @@ def _build_provider(name: str, examples: list[Any]) -> ExtractionProvider:
 def _run_eval(args: argparse.Namespace) -> int:
     examples = load_dataset(args.dataset)
     provider = _build_provider(args.provider, examples)
-    summary = run_eval(provider, examples, provider_name=args.provider)
+    summary = run_eval(provider, examples, provider_name=args.provider, delay_seconds=args.delay)
     payload = summary.to_dict()
 
     print(json.dumps(payload, indent=2))
@@ -76,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     eval_parser.add_argument("--provider", choices=["fake", "gemini"], default="fake")
     eval_parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     eval_parser.add_argument("--output", type=Path, default=None)
+    eval_parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.0,
+        help="Seconds between requests. Use ~7 on a free Gemini tier (10 RPM).",
+    )
     eval_parser.set_defaults(handler=_run_eval)
 
     extract_parser = subparsers.add_parser("extract", help="Extract one case from a text file")

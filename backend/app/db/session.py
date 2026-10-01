@@ -6,7 +6,7 @@ from app.core.config import Settings
 
 def build_engine(settings: Settings) -> Engine:
     return create_engine(
-        settings.database_url.get_secret_value(),
+        settings.sqlalchemy_url,
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
         pool_timeout=settings.db_pool_timeout_seconds,

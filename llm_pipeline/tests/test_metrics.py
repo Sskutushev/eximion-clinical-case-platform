@@ -1,6 +1,12 @@
 from typing import Any
 
-from clinical_extraction.evals.metrics import SetMetrics, evaluate_case, normalize, summarize
+from clinical_extraction.evals.metrics import (
+    SetMetrics,
+    evaluate_case,
+    normalize,
+    similarity,
+    summarize,
+)
 from clinical_extraction.schema import ClinicalCaseExtraction
 
 
@@ -90,3 +96,37 @@ def test_summary_aggregates_and_lists_failures(valid_extraction: dict[str, Any])
 def test_empty_sets_do_not_divide_by_zero() -> None:
     assert SetMetrics.compare(set(), set()) == SetMetrics(1.0, 1.0, 1.0, 0, 0, 0)
     assert SetMetrics.compare({"a"}, set()).f1 == 0.0
+
+
+def test_paraphrased_findings_count_as_matches(valid_extraction: dict[str, Any]) -> None:
+    """A finding is free text; the model paraphrases. Wording is not the thing measured."""
+    findings = [dict(f) for f in valid_extraction["findings"]]
+    findings[0]["value"] = "Pain migrating to right lower quadrant"  # dropped "the"
+    findings[1]["value"] = "White cell count 14.2 x10^9/L"  # expanded "WBC"
+    predicted = _case({**valid_extraction, "findings": findings})
+
+    report = evaluate_case(_case(valid_extraction), predicted, "case-001")
+
+    assert report.findings is not None
+    assert report.findings.f1 > 0.4
+    # Exact text match is still reported, as the strict lower bound.
+    assert report.findings_exact is not None
+    assert report.findings_exact.f1 < report.findings.f1
+
+
+def test_an_unrelated_finding_is_not_matched(valid_extraction: dict[str, Any]) -> None:
+    findings = [dict(f) for f in valid_extraction["findings"]]
+    findings[0]["value"] = "Patient enjoys long walks"
+    predicted = _case({**valid_extraction, "findings": findings})
+
+    report = evaluate_case(_case(valid_extraction), predicted, "case-001")
+
+    assert report.findings is not None
+    assert report.findings.false_positives == 1
+    assert report.findings.false_negatives == 1
+
+
+def test_similarity_is_symmetric_and_bounded() -> None:
+    assert similarity("Heart rate 96/min", "Heart rate 96/min") == 1.0
+    assert similarity("Heart rate 96/min", "") == 0.0
+    assert similarity("a b", "b a") == similarity("b a", "a b")

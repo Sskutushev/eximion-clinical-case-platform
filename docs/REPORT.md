@@ -238,6 +238,25 @@ The browser never calls the API, so the backend is deployed with internal ingres
 `--no-allow-unauthenticated`, and only the frontend's service account holds
 `roles/run.invoker` on it.
 
+Three details in that path are easy to get wrong, and I had all three wrong in the first
+version of the runbook:
+
+**`run.invoker` permits a call; it does not authenticate one.** A private Cloud Run
+service still requires a Google-signed ID token whose audience is the target service URL.
+The frontend now fetches one from the instance metadata server and attaches it to every
+backend request; outside Cloud Run it adds nothing, so local development is unchanged.
+Without this the deployment would have failed on the first request.
+
+**Cloud Run does not expand variable references inside environment values.** A
+`DATABASE_URL` containing `${DB_PASSWORD}` arrives with that literal text as the password.
+The service now receives the parts separately and assembles the URL at runtime, which also
+escapes a generated password containing `/`, `@` or `:` correctly — a test covers both.
+
+**A private-IP Cloud SQL instance needs more than `--no-assign-ip`.** It needs Private
+Services Access for Google to peer the instance into, and a path out of Cloud Run into
+that VPC — Direct VPC egress, which is the current recommended option over a Serverless
+VPC Access connector.
+
 ---
 
 ## 7. What was actually executed
@@ -247,14 +266,14 @@ Everything below was run locally on this machine, and the numbers are the real o
 | Check | Command | Result |
 |---|---|---|
 | Backend lint / format / types | `ruff check`, `ruff format --check`, `mypy --strict` | clean |
-| Backend tests (real PostgreSQL) | `uv run pytest --cov` | **41 passed**, coverage **98.50%** (gate 90%) |
+| Backend tests (real PostgreSQL) | `uv run pytest --cov` | **53 passed**, coverage **98.31%** (gate 90%) |
 | Migration integrity | `alembic upgrade head`, `alembic check`, up/down/up in a test | no drift |
 | Pipeline lint / types | `ruff`, `mypy --strict` | clean |
 | Pipeline tests | `uv run pytest --cov` | **48 passed**, coverage **93.92%** (gate 85%) |
 | Offline eval | `clinical-extraction eval --provider fake` | gate passed; 4 injected defects detected |
 | Frontend lint | `eslint . --max-warnings 0` | clean |
 | Frontend types | `tsc --noEmit` (prod + test configs) | clean |
-| Frontend tests | `vitest run` | **4 passed** |
+| Frontend tests | `vitest run` | **34 passed** |
 | Frontend build | `next build` | success |
 | Docker images | `docker compose up --build --wait` | all services healthy |
 | Extraction container | `docker run eximion-llm eval --provider fake` | uid 1001, eval passes in-container |
@@ -266,11 +285,26 @@ Everything below was run locally on this machine, and the numbers are the real o
   provisioned for this assignment, so nothing was deployed to Cloud Run. The runbook is
   complete and reproducible, but I have not run it end to end, and I am not claiming a
   live URL.
-- **A real Gemini eval run.** `--provider gemini` needs those same credentials.
-  `evals/results/` therefore contains only the offline run. No numbers are fabricated:
-  the Gemini path is covered by tests against a stubbed SDK client (structured-output
-  configuration, error classification by HTTP status, empty-response handling), but it
-  has not been run against the live API.
+- **A complete Gemini eval run.** The pipeline *was* run against the live Gemini API,
+  and the result is committed as produced. It is partial: the run used a free tier whose
+  quota is exhausted partway through ten cases, so two cases were scored and eight are
+  recorded as provider errors. A full measurement needs a paid tier or a Vertex project.
+
+The live run was worth doing: it found two faults the offline harness could not.
+
+**Gemini could not accept the schema at all.** Constrained decoding rejected it with
+*"the specified schema produces a constraint that has too many states for serving"* —
+the length limits, numeric ranges and array bounds on the Pydantic contract. The model
+is now sent a simplified schema carrying the shape, enums and required fields, while
+Pydantic still enforces every bound on the response. Nothing is lost: the model guides
+generation, the validator decides what is acceptable.
+
+**My own metric was wrong twice.** A 429 counted against `schema_valid_rate`, which
+charged a quota failure to model accuracy — provider errors are now reported separately.
+And findings were compared by exact text, so a paraphrase ("Temperature 38.1 C" for
+"Temperature 38.1 °C") scored as a miss. Findings now match on token overlap, with the
+exact-text figure still reported as a strict lower bound. On the completed cases that is
+the difference between F1 0.32 and 0.62 — the same extraction, measured honestly.
 
 ---
 

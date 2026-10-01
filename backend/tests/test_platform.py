@@ -30,11 +30,21 @@ def test_migrations_upgrade_downgrade_roundtrip_and_match_models() -> None:
 
 def test_production_requires_admin_key() -> None:
     with pytest.raises(ValidationError, match="ADMIN_API_KEY"):
-        Settings(environment="production", admin_api_key=None)
+        Settings(
+            environment="production",
+            admin_api_key=None,
+            database_url=SecretStr("postgresql+psycopg://u:p@127.0.0.1:1/none"),
+        )
 
 
 def test_production_hides_interactive_docs() -> None:
-    app = create_app(Settings(environment="production", admin_api_key=SecretStr("k")))
+    app = create_app(
+        Settings(
+            environment="production",
+            admin_api_key=SecretStr("k"),
+            database_url=SecretStr("postgresql+psycopg://u:p@127.0.0.1:1/none"),
+        )
+    )
     with TestClient(app) as client:
         assert client.get("/docs").status_code == 404
         assert client.get("/openapi.json").status_code == 404

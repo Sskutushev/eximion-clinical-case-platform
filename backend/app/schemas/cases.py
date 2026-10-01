@@ -10,7 +10,6 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.domain.enums import FindingCategory, PatientSex, ScoreOutcome
-from app.domain.measurements import MeasurementFlag
 from app.domain.scoring import normalize_answer
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -92,28 +91,9 @@ class CaseCreated(BaseModel):
     id: uuid.UUID
 
 
-class FindingMeasurement(BaseModel):
-    """Numeric value parsed from the finding text, with its reference range.
-
-    Derived and optional: the finding text remains the source of truth. This
-    exists so the interface can plot a value instead of burying it in a
-    sentence. Reference ranges are adult values shown as teaching context.
-    """
-
-    label: str
-    value: float
-    unit: str
-    reference_low: float
-    reference_high: float
-    axis_min: float
-    axis_max: float
-    flag: MeasurementFlag
-
-
 class PublicFinding(BaseModel):
     category: FindingCategory
     value: str
-    measurements: list[FindingMeasurement] = []
 
 
 class PublicClinicalCase(BaseModel):

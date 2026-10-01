@@ -250,54 +250,6 @@
         "title": "FindingIn",
         "type": "object"
       },
-      "FindingMeasurement": {
-        "description": "Numeric value parsed from the finding text, with its reference range.\n\nDerived and optional: the finding text remains the source of truth. This\nexists so the interface can plot a value instead of burying it in a\nsentence. Reference ranges are adult values shown as teaching context.",
-        "properties": {
-          "axis_max": {
-            "title": "Axis Max",
-            "type": "number"
-          },
-          "axis_min": {
-            "title": "Axis Min",
-            "type": "number"
-          },
-          "flag": {
-            "$ref": "#/components/schemas/MeasurementFlag"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "reference_high": {
-            "title": "Reference High",
-            "type": "number"
-          },
-          "reference_low": {
-            "title": "Reference Low",
-            "type": "number"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "label",
-          "value",
-          "unit",
-          "reference_low",
-          "reference_high",
-          "axis_min",
-          "axis_max",
-          "flag"
-        ],
-        "title": "FindingMeasurement",
-        "type": "object"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -327,15 +279,6 @@
         ],
         "title": "HealthStatus",
         "type": "object"
-      },
-      "MeasurementFlag": {
-        "enum": [
-          "low",
-          "normal",
-          "high"
-        ],
-        "title": "MeasurementFlag",
-        "type": "string"
       },
       "OutcomeCount": {
         "properties": {
@@ -473,14 +416,6 @@
         "properties": {
           "category": {
             "$ref": "#/components/schemas/FindingCategory"
-          },
-          "measurements": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/FindingMeasurement"
-            },
-            "title": "Measurements",
-            "type": "array"
           },
           "value": {
             "title": "Value",

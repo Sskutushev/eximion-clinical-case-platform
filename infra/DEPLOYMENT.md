@@ -69,7 +69,22 @@ docker push "${FRONTEND_IMAGE}"
 docker push "${EXTRACTION_IMAGE}"
 ```
 
-## 3. Cloud SQL for PostgreSQL
+## 3. Networking and Cloud SQL
+
+The instance has no public IP, so two things must exist before Cloud Run can
+reach it: a Private Services Access range for Google to peer the instance into,
+and a path out of Cloud Run into that VPC.
+
+```bash
+# Private Services Access: the range Google allocates the Cloud SQL instance in.
+gcloud compute addresses create google-managed-services-default \
+  --global --purpose=VPC_PEERING --prefix-length=16 --network=default
+
+gcloud services vpc-peerings connect \
+  --service=servicenetworking.googleapis.com \
+  --ranges=google-managed-services-default \
+  --network=default
+```
 
 ```bash
 gcloud sql instances create "${SQL_INSTANCE}" \
@@ -80,19 +95,24 @@ gcloud sql instances create "${SQL_INSTANCE}" \
   --availability-type=REGIONAL \
   --backup-start-time=02:00 \
   --enable-point-in-time-recovery \
-  --no-assign-ip --network="projects/${PROJECT_ID}/global/networks/default" \
+  --no-assign-ip \
+  --network="projects/${PROJECT_ID}/global/networks/default" \
   --database-flags=max_connections=200
 
 gcloud sql databases create "${DB_NAME}" --instance="${SQL_INSTANCE}"
 
-# Generated locally, stored only in Secret Manager — never in git or in a shell history file.
+# Generated locally, stored only in Secret Manager. Never echoed, never in git.
 DB_PASSWORD="$(openssl rand -base64 32)"
 gcloud sql users create "${DB_USER}" --instance="${SQL_INSTANCE}" --password="${DB_PASSWORD}"
 ```
 
-`--no-assign-ip` keeps the instance off the public internet; Cloud Run reaches it over
-the Cloud SQL connector. Point-in-time recovery and regional availability are on because
-submissions are an audit record of a competition.
+Point-in-time recovery and regional availability are on because submissions are
+the audit record of a competition.
+
+Each Cloud Run service below is deployed with **Direct VPC egress**
+(`--network` / `--subnet`), which is the current recommended path and avoids
+running a Serverless VPC Access connector. The Cloud SQL connector then attaches
+the instance's Unix socket at `/cloudsql/PROJECT:REGION:INSTANCE`.
 
 ## 4. Secrets
 
@@ -102,19 +122,27 @@ printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create eximion-admin-api-
 unset DB_PASSWORD
 ```
 
-Secrets are mounted as environment variables at runtime; they are never baked into an
-image layer and never passed as `docker build --build-arg`.
+Secrets are mounted as environment variables at runtime. They are never baked
+into an image layer and never passed as `docker build --build-arg`.
+
+**Cloud Run does not expand variable references inside environment values.** A
+`DATABASE_URL` containing `${DB_PASSWORD}` would arrive at the process with that
+text as the password. So the service receives `DB_USER`, `DB_PASSWORD`,
+`DB_NAME` and `INSTANCE_UNIX_SOCKET` separately and assembles the URL at
+runtime (`Settings.sqlalchemy_url`), which also escapes a generated password
+containing `/`, `@` or `:` correctly. `tests/test_config.py` covers both.
 
 ## 5. Service accounts (least privilege)
 
-One identity per workload, each with only the roles it needs.
+One identity per workload, each holding only what that workload uses.
 
 ```bash
 for sa in "${BACKEND_SA}" "${FRONTEND_SA}" "${MIGRATOR_SA}" "${EXTRACTION_SA}"; do
   gcloud iam service-accounts create "${sa}" --display-name="${sa}"
 done
 
-# Backend: connect to Cloud SQL, read its two secrets, call Vertex AI.
+# Backend: Cloud SQL, and its two secrets. It does not call Vertex AI —
+# extraction does — so it gets no aiplatform role.
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
@@ -123,12 +151,9 @@ for secret in eximion-db-password eximion-admin-api-key; do
     --member="serviceAccount:${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 done
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/aiplatform.user"
 
-# Migrator: Cloud SQL + the DB password only. It runs DDL, so it is kept separate
-# from the serving identity and is not attached to any long-running service.
+# Migrator: Cloud SQL and the database password only. It runs DDL, so it is kept
+# separate from the serving identity and is attached to no long-running service.
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
@@ -136,40 +161,44 @@ gcloud secrets add-iam-policy-binding eximion-db-password \
   --member="serviceAccount:${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
-# Frontend: no database, no secrets. It only needs to invoke the backend.
+# Extraction job: Vertex AI only. The CLI prints a case to stdout for a human to
+# review; it does not write to the API, so it holds no admin key and no database
+# access. Publishing extracted cases is a production next step with a review
+# boundary, and the permission belongs with that work, not before it.
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.user"
 
-# Extraction job: call Vertex AI, read the admin key to post cases. No database.
-gcloud projects add-iam-policy-binding "${PROJECT_ID}"   --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --role="roles/aiplatform.user"
-gcloud secrets add-iam-policy-binding eximion-admin-api-key   --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --role="roles/secretmanager.secretAccessor"
+# Frontend: no database, no secrets. It only invokes the backend (granted in §8).
 ```
 
 ## 6. Migrations as a controlled step
 
-Migrations run as their own Cloud Run **Job**, executed deliberately before the new
-revision is deployed. They are *not* run on container startup: with autoscaling, N
-instances would race on the same DDL, and a failed migration would crash-loop the
-service instead of failing one job.
+Migrations run as their own Cloud Run **Job**, executed deliberately before the
+new revision is deployed. Not on container startup: with autoscaling, N
+instances would race on the same DDL, and a failed migration would crash-loop
+the service instead of failing one job.
 
 ```bash
 INSTANCE_CONN="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-SOCKET_URL="postgresql+psycopg://${DB_USER}:\${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${INSTANCE_CONN}"
 
 gcloud run jobs deploy eximion-migrate \
   --image="${BACKEND_IMAGE}" \
   --region="${REGION}" \
   --service-account="${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --network=default --subnet=default --vpc-egress=private-ranges-only \
   --set-cloudsql-instances="${INSTANCE_CONN}" \
   --set-secrets="DB_PASSWORD=eximion-db-password:latest" \
-  --set-env-vars="^|^DATABASE_URL=${SOCKET_URL}|ENVIRONMENT=production" \
+  --set-env-vars="ENVIRONMENT=production,DB_USER=${DB_USER},DB_NAME=${DB_NAME},INSTANCE_UNIX_SOCKET=/cloudsql/${INSTANCE_CONN}" \
   --command="alembic" --args="upgrade,head" \
   --max-retries=0 --task-timeout=10m
 
 gcloud run jobs execute eximion-migrate --region="${REGION}" --wait
 ```
 
-Rollout order for a schema change: deploy backwards-compatible DDL first, then the new
-revision, then (in a later release) drop what is no longer used. That keeps the previous
-revision runnable, which is what makes step 9 a real rollback.
+Rollout order for a schema change: backwards-compatible DDL first, then the new
+revision, then drop what is no longer used in a later release. That keeps the
+previous revision runnable, which is what makes the rollback in §10 real.
 
 ## 7. Deploy the backend
 
@@ -178,9 +207,10 @@ gcloud run deploy eximion-backend \
   --image="${BACKEND_IMAGE}" \
   --region="${REGION}" \
   --service-account="${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --network=default --subnet=default --vpc-egress=private-ranges-only \
   --set-cloudsql-instances="${INSTANCE_CONN}" \
   --set-secrets="DB_PASSWORD=eximion-db-password:latest,ADMIN_API_KEY=eximion-admin-api-key:latest" \
-  --set-env-vars="^|^DATABASE_URL=${SOCKET_URL}|ENVIRONMENT=production|LOG_LEVEL=INFO|DB_POOL_SIZE=5|DB_MAX_OVERFLOW=2|GOOGLE_CLOUD_PROJECT=${PROJECT_ID}|GOOGLE_CLOUD_LOCATION=${REGION}" \
+  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,DB_USER=${DB_USER},DB_NAME=${DB_NAME},INSTANCE_UNIX_SOCKET=/cloudsql/${INSTANCE_CONN},DB_POOL_SIZE=5,DB_MAX_OVERFLOW=2" \
   --min-instances=1 --max-instances=10 --concurrency=80 \
   --cpu=1 --memory=512Mi --timeout=30s \
   --ingress=internal-and-cloud-load-balancing \
@@ -188,68 +218,91 @@ gcloud run deploy eximion-backend \
 ```
 
 **Connection pool sizing.** Cloud Run multiplies connections by instance count:
-`max-instances × (DB_POOL_SIZE + DB_MAX_OVERFLOW)` = `10 × 7` = **70** connections
-against `max_connections=200`, leaving headroom for the migration job, psql sessions
-and a second service. Raising `max-instances` without lowering the pool is the standard
-way to exhaust a Cloud SQL instance, so the two numbers are reviewed together.
-`ENVIRONMENT=production` also makes the app refuse to start without `ADMIN_API_KEY`
-and disables `/docs` and `/openapi.json`.
+`max-instances × (DB_POOL_SIZE + DB_MAX_OVERFLOW)` = `10 × 7` = **70** against
+`max_connections=200`, leaving headroom for the migration job, psql sessions and
+a second service. Raising `max-instances` without lowering the pool is the usual
+way to exhaust a Cloud SQL instance, so the two are reviewed together.
+
+`ENVIRONMENT=production` also makes the app refuse to start without
+`ADMIN_API_KEY` and disables `/docs` and `/openapi.json`.
 
 ## 8. Deploy the frontend
 
 ```bash
+BACKEND_URL="$(gcloud run services describe eximion-backend \
+  --region="${REGION}" --format='value(status.url)')"
+
 gcloud run deploy eximion-frontend \
   --image="${FRONTEND_IMAGE}" \
   --region="${REGION}" \
   --service-account="${FRONTEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --set-env-vars="API_BASE_URL=$(gcloud run services describe eximion-backend --region="${REGION}" --format='value(status.url)'),NODE_ENV=production" \
+  --set-env-vars="NODE_ENV=production,API_BASE_URL=${BACKEND_URL}" \
   --min-instances=1 --max-instances=10 --concurrency=80 \
   --cpu=1 --memory=512Mi \
   --allow-unauthenticated
 
-# The browser never calls the API, so let only the frontend identity invoke the backend.
+# The browser never calls the API, so only the frontend identity may invoke it.
 gcloud run services add-iam-policy-binding eximion-backend \
   --region="${REGION}" \
   --member="serviceAccount:${FRONTEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/run.invoker"
 ```
 
-`API_BASE_URL` is read server-side only (it is not `NEXT_PUBLIC_*`), so the backend URL
-is never shipped to the browser.
+**`run.invoker` permits a call; it does not authenticate one.** A private Cloud
+Run service still requires a Google-signed ID token whose audience is the target
+service URL. The frontend fetches one from the instance metadata server and
+attaches it to every backend request — see `frontend/src/lib/api/auth.ts`, wired
+into the client as a middleware. Outside Cloud Run (`K_SERVICE` unset) it adds
+nothing, so local development is unchanged. Covered by `auth.test.ts`.
+
+`API_BASE_URL` is read server-side only (it is not `NEXT_PUBLIC_*`), so the
+backend URL never reaches the browser — and it doubles as the token audience.
 
 ## 9. Deploy the extraction pipeline (Cloud Run Job)
 
-Extraction is batch work: an editor feeds in clinical text and gets a case to review.
-It is not on a physician's request path, so it is a Job, not a service — no idle cost,
-no cold-start concern, and it cannot take traffic.
+Extraction is batch work: an editor feeds in clinical text and gets a structured
+case to review. It is not on a physician's request path, so it is a Job, not a
+service — no idle cost, and it cannot take traffic.
 
 ```bash
-gcloud run jobs deploy eximion-extraction   --image="${EXTRACTION_IMAGE}"   --region="${REGION}"   --service-account="${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com"   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},GEMINI_MODEL=gemini-2.5-flash"   --cpu=1 --memory=1Gi --max-retries=1 --task-timeout=15m   --args="eval,--provider,gemini"
+gcloud run jobs deploy eximion-extraction \
+  --image="${EXTRACTION_IMAGE}" \
+  --region="${REGION}" \
+  --service-account="${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},GEMINI_MODEL=gemini-2.5-flash" \
+  --cpu=1 --memory=1Gi --max-retries=1 --task-timeout=15m \
+  --args="eval,--provider,gemini"
 ```
 
-Run it, and check the accuracy of the current model and prompt:
+Run it to measure the accuracy of the current model and prompt:
 
 ```bash
 gcloud run jobs execute eximion-extraction --region="${REGION}" --wait
-gcloud logging read   'resource.type="cloud_run_job" AND resource.labels.job_name="eximion-extraction"'   --limit=20 --freshness=10m
+gcloud logging read \
+  'resource.type="cloud_run_job" AND resource.labels.job_name="eximion-extraction"' \
+  --limit=20 --freshness=10m
 ```
 
 Notes:
 
 - Vertex AI is reached through the job's service account (ADC). There is no API key.
-- Run this after a model or prompt change: if the metrics drop, the change does not ship.
-- Extracted cases are written through `POST /api/v1/cases`, which needs the admin key —
-  so the job holds `secretmanager.secretAccessor` on `eximion-admin-api-key` and nothing else.
+- Run this after a model or prompt change: if the metrics drop, the change does
+  not ship.
+- The CLI writes the extracted case to stdout for a human to review. It does not
+  post to the API, which is why this identity holds no admin key — publishing
+  extracted cases needs a review boundary first, and that is a production next step.
 
 ## 10. Verify, then roll back if needed
 
 ```bash
-BACKEND_URL="$(gcloud run services describe eximion-backend --region="${REGION}" --format='value(status.url)')"
-WEB_URL="$(gcloud run services describe eximion-frontend --region="${REGION}" --format='value(status.url)')"
+WEB_URL="$(gcloud run services describe eximion-frontend \
+  --region="${REGION}" --format='value(status.url)')"
 
-# Smoke test the deployed stack with the same script CI uses.
-TOKEN="$(gcloud auth print-identity-token)"
-curl -fsS -H "Authorization: Bearer ${TOKEN}" "${BACKEND_URL}/health/ready"
+# The backend is private, so direct calls need an identity token.
+export ID_TOKEN="$(gcloud auth print-identity-token)"
+curl -fsS -H "Authorization: Bearer ${ID_TOKEN}" "${BACKEND_URL}/health/ready"
+
+# The same smoke test CI runs, pointed at the deployed stack.
 API_BASE_URL="${BACKEND_URL}" WEB_BASE_URL="${WEB_URL}" \
   ADMIN_API_KEY="$(gcloud secrets versions access latest --secret=eximion-admin-api-key)" \
   bash scripts/smoke.sh
@@ -257,6 +310,9 @@ API_BASE_URL="${BACKEND_URL}" WEB_BASE_URL="${WEB_URL}" \
 gcloud logging read \
   'resource.type="cloud_run_revision" AND severity>=WARNING' --limit=50 --freshness=10m
 ```
+
+`smoke.sh` picks up `ID_TOKEN` from the environment and sends it on every
+backend call, so it works against a private service unchanged.
 
 Rollback is a traffic shift to the previous revision — no rebuild, no image pull:
 
@@ -266,16 +322,17 @@ gcloud run services update-traffic eximion-backend \
   --region="${REGION}" --to-revisions="<previous-revision>=100"
 ```
 
-For a gradual rollout, split traffic instead: `--to-revisions="<new>=10,<previous>=90"`,
-watch the error rate, then move to 100%.
+For a gradual rollout, split traffic instead:
+`--to-revisions="<new>=10,<previous>=90"`, watch the error rate, then move to 100%.
 
 ## 11. Notes and limits
 
-- **Vertex AI / Gemini** uses the backend service account via Application Default
-  Credentials — no API key is stored anywhere. Extraction is an authoring-time
-  operation; it is not on the request path of a physician solving a case.
-- **Cold starts**: `min-instances=1` keeps one warm instance per service; the extraction
-  pipeline is a batch/CLI workload and does not need warm capacity.
-- **Not configured here** (out of scope for the assignment, listed in `docs/REPORT.md`):
-  custom domain and Cloud Armor, end-user authentication, rate limiting, uptime checks
-  and alerting policies, a dedicated audit-log sink, and a data retention policy.
+- **Cold starts**: `min-instances=1` keeps one warm instance per service. The
+  extraction job is batch work and needs no warm capacity.
+- **Not configured here**, and listed as production next steps in
+  `docs/REPORT.md`: custom domain and Cloud Armor, end-user authentication,
+  rate limiting, uptime checks and alerting policies, a dedicated audit-log
+  sink, and a data retention policy.
+- **Not executed.** No GCP project with billing was provisioned for this
+  assignment, so none of the above was run against a live account. The commands
+  are the path I would follow, not a transcript of one I ran.

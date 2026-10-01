@@ -203,31 +203,6 @@ export interface components {
             /** Value */
             value: string;
         };
-        /**
-         * FindingMeasurement
-         * @description Numeric value parsed from the finding text, with its reference range.
-         *
-         *     Derived and optional: the finding text remains the source of truth. This
-         *     exists so the interface can plot a value instead of burying it in a
-         *     sentence. Reference ranges are adult values shown as teaching context.
-         */
-        FindingMeasurement: {
-            /** Axis Max */
-            axis_max: number;
-            /** Axis Min */
-            axis_min: number;
-            flag: components["schemas"]["MeasurementFlag"];
-            /** Label */
-            label: string;
-            /** Reference High */
-            reference_high: number;
-            /** Reference Low */
-            reference_low: number;
-            /** Unit */
-            unit: string;
-            /** Value */
-            value: number;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -241,11 +216,6 @@ export interface components {
              */
             status: "ok" | "unavailable";
         };
-        /**
-         * MeasurementFlag
-         * @enum {string}
-         */
-        MeasurementFlag: "low" | "normal" | "high";
         /** OutcomeCount */
         OutcomeCount: {
             /** Count */
@@ -297,11 +267,6 @@ export interface components {
         /** PublicFinding */
         PublicFinding: {
             category: components["schemas"]["FindingCategory"];
-            /**
-             * Measurements
-             * @default []
-             */
-            measurements: components["schemas"]["FindingMeasurement"][];
             /** Value */
             value: string;
         };

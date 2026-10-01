@@ -13,10 +13,10 @@ const ORDER: FindingCategory[] = [
 ];
 
 /**
- * What the case is made of, and how much of it is abnormal.
+ * What the case is made of: how many findings, and of which kind.
  *
- * Gives a participant the shape of the case before reading it, and makes an
- * unbalanced case obvious to whoever authored it.
+ * Counts only. Judging whether a value is abnormal is clinical interpretation,
+ * and that belongs to the case author, not to this application.
  */
 export function FindingsSummary({
   clinicalCase,
@@ -31,8 +31,7 @@ export function FindingsSummary({
   })).filter((row) => row.count > 0);
 
   const peak = Math.max(...counts.map((row) => row.count));
-  const measurements = clinicalCase.findings.flatMap((f) => f.measurements);
-  const abnormal = measurements.filter((m) => m.flag !== "normal").length;
+  const categories = counts.length;
 
   return (
     <section className="panel panel--tight composition" aria-labelledby="composition-heading">
@@ -40,18 +39,14 @@ export function FindingsSummary({
         {t.composition.heading}
       </h2>
 
-      <dl className="stats__figures">
+      <dl className="stats__figures stats__figures--pair">
         <div>
           <dt>{t.composition.findings}</dt>
           <dd>{clinicalCase.findings.length}</dd>
         </div>
         <div>
-          <dt>{t.composition.measured}</dt>
-          <dd>{measurements.length}</dd>
-        </div>
-        <div>
-          <dt>{t.composition.abnormal}</dt>
-          <dd className={abnormal > 0 ? "composition__alert" : undefined}>{abnormal}</dd>
+          <dt>{t.composition.categories}</dt>
+          <dd>{categories}</dd>
         </div>
       </dl>
 

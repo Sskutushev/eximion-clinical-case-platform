@@ -1,0 +1,86 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "prompt_version": "extract-v1",
+  "total": 10,
+  "scored": 2,
+  "provider_errors": 8,
+  "schema_valid_rate": 1.0,
+  "age_accuracy": 1.0,
+  "sex_accuracy": 1.0,
+  "answer_key_accuracy": 1.0,
+  "findings_precision": 0.5555,
+  "findings_recall": 0.7084,
+  "findings_f1": 0.6196,
+  "findings_f1_exact_text": 0.3176,
+  "finding_category_accuracy": 0.7916,
+  "exact_case_match_rate": 0.0,
+  "failures": [
+    {
+      "example_id": "case-001",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-002",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-003",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-004",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings",
+        "finding_categories"
+      ]
+    },
+    {
+      "example_id": "case-005",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-006",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings",
+        "finding_categories"
+      ]
+    },
+    {
+      "example_id": "case-007",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-008",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-009",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    },
+    {
+      "example_id": "case-010",
+      "status": "provider_error",
+      "error": "ProviderError: Gemini API error (status 429)",
+      "mismatches": []
+    }
+  ]
+}
