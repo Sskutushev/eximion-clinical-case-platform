@@ -1,0 +1,12 @@
+{
+  "name": "eximion-report-builder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generates the Word report from docs/REPORT.md",
+  "scripts": {
+    "build": "node build-docx.js ../Eximion_Test_Assignment_Sergei_Kutushev.docx"
+  },
+  "dependencies": {
+    "docx": "^9.8.1"
+  }
+}

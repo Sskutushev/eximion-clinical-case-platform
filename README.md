@@ -290,7 +290,7 @@ failures and gates on the resulting metrics.
 | Suite | What it covers |
 |---|---|
 | `backend` — 41 tests, 98% | real PostgreSQL via Alembic; create/read/score; answer-key non-leakage on the raw body; normalization; submission persistence; transaction rollback; migration up/down/up; drift check; production fail-closed config; 503 readiness; no internals in errors |
-| `llm_pipeline` — 47 tests, 94% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK |
+| `llm_pipeline` — 48 tests, 94% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK |
 | `frontend` — 4 tests | form submission, pending state, score rendering, accessible error handling, finding grouping |
 | `scripts/smoke.sh` | the real stack: auth required, create → read → score → persist, answer key absent from both API and rendered HTML |
 
@@ -312,7 +312,7 @@ It needs no secrets.
 | Fail closed in production | `ENVIRONMENT=production` without `ADMIN_API_KEY` refuses to start, and `/docs` + `/openapi.json` are disabled |
 | Strict input validation | `extra="forbid"`, length and range limits on every field, `UUID` path types, and DB `CHECK` constraints as the last line |
 | Generic error bodies | handlers return `{"detail": "..."}`; stack traces, SQL and connection strings stay in the logs |
-| No clinical text in logs | structured JSON logs carry ids, status, duration, field paths — never bodies or prompts |
+| No clinical text in logs | structured JSON logs carry ids, status, duration, field paths — never bodies or prompts. Pydantic embeds offending input values in its messages, so validation failures are logged without `exc_info`; a test asserts it |
 | LLM output is untrusted input | schema-constrained generation *and* Pydantic validation before anything reaches the database |
 | Secrets never in git | `.env` ignored, `.env.example` only, Secret Manager in production, `gitleaks` over full history in CI |
 | Security headers | `nosniff`, `DENY`, `no-referrer`, `no-store` on API responses; the same set on the frontend |

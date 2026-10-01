@@ -160,7 +160,15 @@ create schema so the result is POSTable unchanged.
 - **Provider boundary.** A `Protocol` with a Gemini implementation and a fake one, so the
   pipeline, the harness and the tests all run with no network and no credentials.
 - **Provenance and logging.** The model name and prompt version travel with each
-  extracted case; logs carry field paths and error counts, never clinical text.
+  extracted case; logs carry field paths and error types, never clinical text.
+
+One finding worth calling out, because it came from reviewing my own code rather than
+from a test: a validation failure was originally logged with `logger.exception`, which
+is the idiomatic choice and what the linter pushes you toward. But Pydantic embeds the
+offending *input values* in its error message — here, the clinical narrative — so the
+traceback would have written patient text into the logs, defeating the logging policy
+stated two lines above. Validation failures now log field paths and error types with no
+`exc_info`, and a regression test asserts the clinical marker never reaches the log.
 
 ### Eval methodology
 
@@ -185,7 +193,7 @@ four failures:
 {
   "provider": "fake", "model": "fake-extractor-1", "prompt_version": "extract-v1",
   "total": 10, "schema_valid_rate": 0.9, "age_accuracy": 0.8889, "sex_accuracy": 1.0,
-  "answer_key_accuracy": 0.8889, "findings_f1": 0.9907, "exact_case_match_rate": 0.6,
+  "answer_key_accuracy": 0.8889, "findings_f1": 0.9899, "exact_case_match_rate": 0.6,
   "failures": ["case-003 findings", "case-005 answer_key", "case-007 patient_age",
                "case-009 schema_invalid"]
 }
@@ -237,7 +245,7 @@ Everything below was run locally on this machine, and the numbers are the real o
 | Backend tests (real PostgreSQL) | `uv run pytest --cov` | **41 passed**, coverage **98.50%** (gate 90%) |
 | Migration integrity | `alembic upgrade head`, `alembic check`, up/down/up in a test | no drift |
 | Pipeline lint / types | `ruff`, `mypy --strict` | clean |
-| Pipeline tests | `uv run pytest --cov` | **47 passed**, coverage **93.92%** (gate 85%) |
+| Pipeline tests | `uv run pytest --cov` | **48 passed**, coverage **93.92%** (gate 85%) |
 | Offline eval | `clinical-extraction eval --provider fake` | gate passed; 4 injected defects detected |
 | Frontend lint | `eslint . --max-warnings 0` | clean |
 | Frontend types | `tsc --noEmit` (prod + test configs) | clean |
