@@ -246,10 +246,10 @@ children.push(p(
   "The offline fixtures deliberately inject four known defects: a dropped finding, a missing synonym, a nulled age, and an invalid category. The harness is therefore proven to detect errors rather than always reporting a perfect score, and CI asserts those exact four failures:"
 ));
 children.push(...mono([
-  "{ \"provider\": \"fake\", \"model\": \"fake-extractor-1\", \"prompt_version\": \"extract-v1\",",
-  "  \"total\": 10, \"schema_valid_rate\": 0.9, \"age_accuracy\": 0.8889,",
-  "  \"sex_accuracy\": 1.0, \"answer_key_accuracy\": 0.8889, \"findings_f1\": 0.9899,",
-  "  \"exact_case_match_rate\": 0.6,",
+  "{ \"provider\": \"fake\", \"model\": \"fake-extractor-1\", \"prompt_version\": \"extract-v2\",",
+  "  \"total\": 10, \"scored\": 9, \"provider_errors\": 0, \"model_blocked\": 0,",
+  "  \"schema_valid_rate\": 0.9, \"age_accuracy\": 0.8889, \"sex_accuracy\": 1.0,",
+  "  \"answer_key_accuracy\": 0.8889, \"findings_f1\": 0.9899, \"exact_case_match_rate\": 0.6,",
   "  \"failures\": [\"case-003 findings\", \"case-005 answer_key\",",
   "               \"case-007 patient_age\", \"case-009 schema_invalid\"] }",
 ]));
@@ -282,7 +282,7 @@ children.push(p(
   "Cloud Run does not expand variable references inside environment values: a DATABASE_URL containing ${DB_PASSWORD} arrives with that literal text as the password. The service now receives the parts separately and assembles the URL at runtime, which also escapes a generated password containing / @ or : correctly. A test covers both."
 ));
 children.push(p(
-  "A private-IP Cloud SQL instance needs more than --no-assign-ip. It needs Private Services Access for Google to peer the instance into, and a path out of Cloud Run into that VPC — Direct VPC egress, the current recommended option over a Serverless VPC Access connector."
+  "A private-IP Cloud SQL instance needs more than --no-assign-ip. It needs Private Services Access for Google to peer the instance into, and a path out of Cloud Run into that VPC — Direct VPC egress, the current recommended option over a Serverless VPC Access connector. And the application then has to use that path: it connects to the instance's private address on 5432 as an ordinary PostgreSQL client, with TLS required on the instance. The managed /cloudsql Unix socket is the Auth Proxy's public-IP path, and a runbook that pairs it with a private-only instance has two half-paths and no connection. The runbook now has one."
 ));
 
 // -------------------------------------------------------- 7. what was executed
