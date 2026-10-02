@@ -1,7 +1,22 @@
 # Evaluation results
 
-`gemini-2.5-flash.json` is a real run against the Gemini API, not a simulation.
-It is committed as produced, including its failures.
+`gemini-2.5-flash-extract-v1.json` is a real run against the Gemini API, not a
+simulation. It is committed as produced, including its failures.
+
+## Provenance: which prompt this measures
+
+The file name carries the prompt version on purpose. The run was made with
+`extract-v1`. The current prompt is `extract-v2` (see `PROMPT_VERSION` in
+`prompt.py`), which changed the extraction schema, not just the wording: the
+model no longer produces `score_weight` for diagnoses. Weights are now assigned
+by a deterministic policy after extraction, so the model only reports which
+diagnosis the source text establishes.
+
+`extract-v2` has **not** been run live, for the same quota reason described
+below. So the honest statement is: the previous prompt was partially verified
+against the live model; the current one is covered by the offline eval and the
+stubbed-SDK tests, and awaits a paid tier or a Vertex project for its own live
+run. The v1 numbers are not presented as a measurement of v2.
 
 ## Reproducing it
 
@@ -15,7 +30,7 @@ export GEMINI_API_KEY="your-key"
 cd llm_pipeline
 uv sync
 uv run clinical-extraction eval --provider gemini --delay 7 \
-  --output evals/results/gemini-2.5-flash.json
+  --output evals/results/gemini-2.5-flash-extract-v2.json
 ```
 
 For the production path, use Vertex AI instead — no key is stored anywhere, the

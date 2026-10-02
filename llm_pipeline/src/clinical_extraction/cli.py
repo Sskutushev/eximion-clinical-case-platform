@@ -27,16 +27,29 @@ from clinical_extraction.providers.gemini import GeminiProvider
 FAKE_THRESHOLDS = {"schema_valid_rate": 0.9, "answer_key_accuracy": 0.85, "findings_f1": 0.9}
 
 
-def _build_provider(name: str, examples: list[Any]) -> ExtractionProvider:
+def _build_provider(name: str, examples: list[Any]) -> tuple[ExtractionProvider, int]:
+    """Return the provider and the retry budget that goes with it.
+
+    The fake provider has no transient failures to retry and no settings to read,
+    so its budget is one attempt. Gemini takes MAX_ATTEMPTS from the environment,
+    the same value `extract` uses — one knob, not two.
+    """
     if name == "fake":
-        return FakeProvider(build_fixtures(examples))
-    return GeminiProvider(get_extraction_settings())
+        return FakeProvider(build_fixtures(examples)), 1
+    settings = get_extraction_settings()
+    return GeminiProvider(settings), settings.max_attempts
 
 
 def _run_eval(args: argparse.Namespace) -> int:
     examples = load_dataset(args.dataset)
-    provider = _build_provider(args.provider, examples)
-    summary = run_eval(provider, examples, provider_name=args.provider, delay_seconds=args.delay)
+    provider, max_attempts = _build_provider(args.provider, examples)
+    summary = run_eval(
+        provider,
+        examples,
+        provider_name=args.provider,
+        delay_seconds=args.delay,
+        max_attempts=max_attempts,
+    )
     payload = summary.to_dict()
 
     print(json.dumps(payload, indent=2))

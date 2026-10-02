@@ -227,6 +227,7 @@ children.push(
   bullet([t("Validation is mandatory. ", { bold: true }), t("Every response is validated with Pydantic. A violation raises SchemaValidationError and is not retried and not repaired with a fallback — a malformed clinical extraction must surface.")]),
   bullet([t("Retries are narrow. ", { bold: true }), t("Bounded exponential backoff for transient provider errors (429, 5xx) only; 4xx and safety blocks fail immediately.")]),
   bullet([t("The model does not diagnose. ", { bold: true }), t("The prompt restricts it to diagnoses the source text states, and requires null for unstated age or sex instead of an estimate.")]),
+  bullet([t("The model does not score either. ", { bold: true }), t("The first prompt asked it to weight a differential “by clinical proximity” — a number the source text does not contain, invented by the model, in a pipeline whose first rule is to invent nothing. Extraction (extract-v2) now records only which diagnosis the source establishes; score weights are assigned afterwards by an explicit deterministic policy, so the number is a product decision an editor can change rather than a model guess.")]),
   bullet([t("Provider boundary. ", { bold: true }), t("A Protocol with a Gemini implementation and a fake one, so the pipeline, the harness and the tests all run with no network and no credentials.")]),
   bullet([t("Provenance and logging. ", { bold: true }), t("The model name and prompt version travel with each extracted case; logs carry field paths and error types, never clinical text.")]),
 );
@@ -256,10 +257,13 @@ children.push(...mono([
 // --------------------------------------------------------------- 6. GCP
 children.push(h1("6. Docker and GCP deployment"));
 children.push(p(
-  "Both images are multi-stage and run as a non-root user: the backend resolves dependencies from uv.lock in a builder stage and ships only the venv and source; the frontend uses Next.js output: “standalone”, so the runtime image carries a minimal server rather than node_modules. Both read PORT from the environment, as Cloud Run requires, and no secret is baked into a layer. docker compose up --wait brings up PostgreSQL, runs migrations as a separate one-shot service, then starts the API and the frontend — the same ordering as production."
+  "Three images, all multi-stage and running as a non-root user. backend and frontend are services; llm_pipeline is a batch container whose entry point is the extraction CLI, deployed as a Cloud Run Job rather than a service: extraction is authoring work, not request-path work, so it should neither idle nor be able to take traffic."
 ));
 children.push(p(
-  "infra/DEPLOYMENT.md is the full runbook: Artifact Registry → images tagged with the commit SHA → Cloud SQL (PostgreSQL 17, private IP, point-in-time recovery, regional) → Secret Manager → three least-privilege service accounts → migrations as a Cloud Run Job → backend and frontend services → smoke test and log check → rollback by traffic shift. Two deliberate decisions in there:"
+  "For the two services: the backend resolves dependencies from uv.lock in a builder stage and ships only the venv and source; the frontend uses Next.js output: “standalone”, so the runtime image carries a minimal server rather than node_modules. Both read PORT from the environment, as Cloud Run requires, and no secret is baked into a layer. docker compose up --wait brings up PostgreSQL, runs migrations as a separate one-shot service, then starts the API and the frontend — the same ordering as production."
+));
+children.push(p(
+  "infra/DEPLOYMENT.md is the full runbook: Artifact Registry → images tagged with the commit SHA → Cloud SQL (PostgreSQL 17, private IP, point-in-time recovery, regional) → Secret Manager → four least-privilege service accounts → migrations as a Cloud Run Job → backend and frontend services → the extraction Job → smoke test and log check → rollback by traffic shift. Two deliberate decisions in there:"
 ));
 children.push(p(
   "Migrations are a controlled step, not on startup. With autoscaling, N instances would race on the same DDL, and a failed migration would crash-loop the service instead of failing one job. The job runs under its own service account, which has Cloud SQL access and the DB password but is not attached to any serving revision."
@@ -268,7 +272,7 @@ children.push(p(
   "Pool sizing is derived, not guessed. Cloud Run multiplies connections by instance count: max-instances × (pool_size + max_overflow) = 10 × 7 = 70 against max_connections=200, leaving headroom for the migration job and operator sessions. Raising max-instances without lowering the pool is the standard way to exhaust a Cloud SQL instance, so the two are reviewed together."
 ));
 children.push(p(
-  "The browser never calls the API, so the backend is deployed with internal ingress and --no-allow-unauthenticated, and only the frontend's service account holds roles/run.invoker on it."
+  "The browser never calls the API, so the backend is deployed with --no-allow-unauthenticated, and only the frontend's service account holds roles/run.invoker on it. Ingress is all, deliberately: IAM closes the service on any network, whereas internal ingress is a network control that would require the frontend to egress through a VPC — without that it does not harden the service, it breaks it. One lock that works rather than two where one is wrong."
 ));
 children.push(h2("Three things the first runbook got wrong"));
 children.push(p(
@@ -298,9 +302,8 @@ children.push(table(
     ["Frontend tests", "vitest run", "34 passed"],
     ["Frontend build", "next build", "success"],
     ["Docker images", "docker compose up --build --wait", "all services healthy"],
+    ["Extraction container", "docker run eximion-llm eval --provider fake", "uid 1001, eval passes in-container"],
     ["End-to-end smoke", "bash scripts/smoke.sh", "SMOKE PASS"],
-    ["Dependency audits", "pip-audit --strict, npm audit", "no known vulnerabilities"],
-    ["Secret scan", "gitleaks, full history", "clean"],
   ],
   [2700, 3300, 3360],
 ));
@@ -308,8 +311,15 @@ children.push(spacer());
 children.push(p("Not executed, and why:", { bold: true }));
 children.push(
   bullet([t("Live GCP deployment. ", { bold: true }), t("No project with Vertex AI and Cloud SQL billing was provisioned for this assignment, so nothing was deployed to Cloud Run. The runbook is complete and reproducible, but I have not run it end to end, and I am not claiming a live URL.")]),
-  bullet([t("A real Gemini eval run. ", { bold: true }), t("--provider gemini needs those same credentials. evals/results/ therefore contains only the offline run. No numbers are fabricated: the Gemini path is covered by tests against a stubbed SDK client (structured-output configuration, error classification by HTTP status, empty-response handling), but it has not been run against the live API.")]),
+  bullet([t("A complete Gemini eval run of the current prompt. ", { bold: true }), t("The pipeline was run against the live Gemini API, and the result is committed as produced in evals/results/gemini-2.5-flash-extract-v1.json. Two caveats, both in the file name. It is partial: the run used a free tier whose quota is exhausted partway through ten cases, so two cases were scored and eight are recorded as provider errors. And it measures extract-v1: the prompt has since moved to extract-v2, which removed score_weight from the model's output, and that version has not been run live for the same quota reason. The v2 change narrows what the model produces rather than adding to it, and it is covered by the offline eval and the stubbed-SDK tests, but I am not presenting the v1 numbers as a measurement of the current prompt. A full measurement needs a paid tier or a Vertex project.")]),
 );
+children.push(p("The live run was worth doing: it found two faults the offline harness could not."));
+children.push(p(
+  "Gemini could not accept the schema at all. Constrained decoding rejected it with “the specified schema produces a constraint that has too many states for serving” — the length limits, numeric ranges and array bounds on the Pydantic contract. The model is now sent a simplified schema carrying the shape, enums and required fields, while Pydantic still enforces every bound on the response. Nothing is lost: the model guides generation, the validator decides what is acceptable."
+));
+children.push(p(
+  "My own metric was wrong twice. A 429 counted against schema_valid_rate, which charged a quota failure to model accuracy — provider errors are now reported separately. And findings were compared by exact text, so a paraphrase (“Temperature 38.1 C” for “Temperature 38.1 °C”) scored as a miss. Findings now match on token overlap, with the exact-text figure still reported as a strict lower bound. On the completed cases that is the difference between F1 0.32 and 0.62 — the same extraction, measured honestly."
+));
 
 // ----------------------------------------------------------- 8. trade-offs
 children.push(h1("8. Trade-offs"));

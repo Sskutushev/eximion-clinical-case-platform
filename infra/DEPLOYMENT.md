@@ -11,7 +11,7 @@ Architecture:
 Artifact Registry ──► Cloud Run (frontend, public)
                              │  server-side fetch, ID token
                              ▼
-                      Cloud Run (backend, internal + LB)
+                      Cloud Run (backend, IAM-only: ingress=all, no-allow-unauthenticated)
                              │  Cloud SQL connector (private IP)
                              ▼
                       Cloud SQL for PostgreSQL 17

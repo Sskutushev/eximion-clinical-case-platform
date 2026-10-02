@@ -35,7 +35,7 @@ def test_eval_detects_the_injected_defects() -> None:
     examples = load_dataset()
     provider = FakeProvider(build_fixtures(examples))
 
-    summary = run_eval(provider, examples, provider_name="fake")
+    summary = run_eval(provider, examples, provider_name="fake", max_attempts=1)
 
     assert summary.total == 10
     failed_ids = {f["example_id"] for f in summary.failures}

@@ -157,6 +157,12 @@ create schema so the result is POSTable unchanged.
   (429, 5xx) only; 4xx and safety blocks fail immediately.
 - **The model does not diagnose.** The prompt restricts it to diagnoses the source text
   states, and requires `null` for unstated age or sex instead of an estimate.
+- **The model does not score either.** The first prompt asked it to weight a differential
+  "by clinical proximity" — a number the source text does not contain, invented by the
+  model, in a pipeline whose first rule is to invent nothing. Extraction (`extract-v2`)
+  now records only which diagnosis the source establishes; score weights are assigned
+  afterwards by an explicit deterministic policy, so the number is a product decision an
+  editor can change rather than a model guess.
 - **Provider boundary.** A `Protocol` with a Gemini implementation and a fake one, so the
   pipeline, the harness and the tests all run with no network and no credentials.
 - **Provenance and logging.** The model name and prompt version travel with each
@@ -234,9 +240,12 @@ count: `max-instances × (pool_size + max_overflow)` = `10 × 7` = 70 against
 Raising `max-instances` without lowering the pool is the standard way to exhaust a Cloud
 SQL instance, so the two are reviewed together.
 
-The browser never calls the API, so the backend is deployed with internal ingress and
+The browser never calls the API, so the backend is deployed with
 `--no-allow-unauthenticated`, and only the frontend's service account holds
-`roles/run.invoker` on it.
+`roles/run.invoker` on it. Ingress is `all`, deliberately: IAM closes the service on any
+network, whereas internal ingress is a *network* control that would require the frontend
+to egress through a VPC — without that it does not harden the service, it breaks it. One
+lock that works rather than two where one is wrong.
 
 Three details in that path are easy to get wrong, and I had all three wrong in the first
 version of the runbook:
@@ -285,10 +294,17 @@ Everything below was run locally on this machine, and the numbers are the real o
   provisioned for this assignment, so nothing was deployed to Cloud Run. The runbook is
   complete and reproducible, but I have not run it end to end, and I am not claiming a
   live URL.
-- **A complete Gemini eval run.** The pipeline *was* run against the live Gemini API,
-  and the result is committed as produced. It is partial: the run used a free tier whose
-  quota is exhausted partway through ten cases, so two cases were scored and eight are
-  recorded as provider errors. A full measurement needs a paid tier or a Vertex project.
+- **A complete Gemini eval run of the current prompt.** The pipeline *was* run against
+  the live Gemini API, and the result is committed as produced in
+  `evals/results/gemini-2.5-flash-extract-v1.json`. Two caveats, both in the file name.
+  It is partial: the run used a free tier whose quota is exhausted partway through ten
+  cases, so two cases were scored and eight are recorded as provider errors. And it
+  measures `extract-v1`: the prompt has since moved to `extract-v2`, which removed
+  `score_weight` from the model's output, and that version has not been run live for
+  the same quota reason. The v2 change narrows what the model produces rather than
+  adding to it, and it is covered by the offline eval and the stubbed-SDK tests, but I
+  am not presenting the v1 numbers as a measurement of the current prompt. A full
+  measurement needs a paid tier or a Vertex project.
 
 The live run was worth doing: it found two faults the offline harness could not.
 
