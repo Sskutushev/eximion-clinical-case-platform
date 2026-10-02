@@ -23,7 +23,7 @@ def run_eval(
     *,
     provider_name: str,
     delay_seconds: float = 0.0,
-    max_attempts: int = 3,
+    max_attempts: int,
 ) -> EvalSummary:
     """Extract every case in the dataset and score it against ground truth.
 
@@ -33,6 +33,10 @@ def run_eval(
     `delay_seconds` paces the requests. Free Gemini tiers allow a handful of
     requests per minute, and without pacing the back half of a run is just 429s
     — which would show up as an extraction failure rather than a quota one.
+
+    `max_attempts` is required rather than defaulted so the caller's configured
+    retry budget is the one that runs; a silent default here would make
+    MAX_ATTEMPTS apply to `extract` and not to `eval`.
     """
     extractor = ClinicalCaseExtractor(provider, max_attempts=max_attempts)
     reports: list[CaseReport] = []

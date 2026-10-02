@@ -300,10 +300,12 @@ cd llm_pipeline && uv run clinical-extraction eval --provider gemini --delay 7
 Or through Vertex AI, which is the production path and stores no key at all:
 set `GOOGLE_CLOUD_PROJECT` and run `gcloud auth application-default login`.
 
-`llm_pipeline/evals/results/gemini-2.5-flash.json` is a real run, committed as
-produced. It was made on a free tier whose quota runs out partway through, so it is a
+`llm_pipeline/evals/results/gemini-2.5-flash-extract-v1.json` is a real run, committed
+as produced. It was made on a free tier whose quota runs out partway through, so it is a
 genuine but partial measurement — the completed cases are scored, the rest are recorded
-as quota errors rather than retried into looking better. See
+as quota errors rather than retried into looking better. It measures the previous prompt,
+`extract-v1`; the current `extract-v2` (the model no longer emits score weights) has not
+been run live for the same quota reason. See
 [`evals/results/README.md`](llm_pipeline/evals/results/README.md) for how to read it.
 
 ## Tests and checks
