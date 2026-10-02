@@ -55,15 +55,18 @@ without it the back half of a run is nothing but quota errors.
 | Field | Meaning |
 |---|---|
 | `scored` / `total` | how many cases produced an extraction that could be scored |
-| `provider_errors` | requests that never reached the model — quota, transport, safety |
-| `schema_valid_rate` | of the responses the model **did** return, how many satisfied the contract |
+| `provider_errors` | requests that never reached the model — quota, transport |
+| `model_blocked` | requests the model declined to answer — a safety block |
+| `schema_valid_rate` | of the responses the model **did** return, how many satisfied the contract; provider errors and blocks are outside the denominator |
 | `findings_f1` | findings matched by token overlap ≥ 0.6 |
 | `findings_f1_exact_text` | the same, requiring identical text — a strict lower bound |
 | `finding_category_accuracy` | of matched findings, how many were filed under the right category |
 
 A provider error is deliberately not counted as a schema failure. A 429 means
 the request never reached the model, and charging it against model accuracy
-would understate the model.
+would understate the model. A safety block is kept apart from both: it is the
+model declining, which is neither an outage nor a malformed answer, and it is
+worth seeing on its own because clinical text can trip a safety filter.
 
 ## What this run shows, and what it does not
 

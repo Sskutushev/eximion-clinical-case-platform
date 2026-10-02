@@ -27,8 +27,11 @@ def run_eval(
 ) -> EvalSummary:
     """Extract every case in the dataset and score it against ground truth.
 
-    Failures are recorded, not swallowed: a case that cannot be extracted counts
-    against schema_valid_rate.
+    Failures are recorded, not swallowed. A response that fails validation
+    counts against schema_valid_rate. A request that never reached the model
+    (provider_error) or that the model declined (model_blocked) is reported
+    under its own count and left out of that denominator, so a quota outage
+    or a safety block is not charged to the model's accuracy.
 
     `delay_seconds` paces the requests. Free Gemini tiers allow a handful of
     requests per minute, and without pacing the back half of a run is just 429s

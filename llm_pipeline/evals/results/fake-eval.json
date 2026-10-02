@@ -1,8 +1,11 @@
 {
   "provider": "fake",
   "model": "fake-extractor-1",
-  "prompt_version": "extract-v1",
+  "prompt_version": "extract-v2",
   "total": 10,
+  "scored": 9,
+  "provider_errors": 0,
+  "model_blocked": 0,
   "schema_valid_rate": 0.9,
   "age_accuracy": 0.8889,
   "sex_accuracy": 1.0,
@@ -10,12 +13,13 @@
   "findings_precision": 1.0,
   "findings_recall": 0.9815,
   "findings_f1": 0.9899,
+  "findings_f1_exact_text": 0.9899,
   "finding_category_accuracy": 1.0,
   "exact_case_match_rate": 0.6,
   "failures": [
     {
       "example_id": "case-003",
-      "schema_valid": true,
+      "status": "scored",
       "error": null,
       "mismatches": [
         "findings"
@@ -23,7 +27,7 @@
     },
     {
       "example_id": "case-005",
-      "schema_valid": true,
+      "status": "scored",
       "error": null,
       "mismatches": [
         "answer_key"
@@ -31,7 +35,7 @@
     },
     {
       "example_id": "case-007",
-      "schema_valid": true,
+      "status": "scored",
       "error": null,
       "mismatches": [
         "patient_age"
@@ -39,7 +43,7 @@
     },
     {
       "example_id": "case-009",
-      "schema_valid": false,
+      "status": "schema_invalid",
       "error": "SchemaValidationError: extraction does not satisfy the contract: 1 error(s)",
       "mismatches": []
     }

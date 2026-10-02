@@ -29,10 +29,12 @@ class Settings(BaseSettings):
     db_user: str | None = None
     db_password: SecretStr | None = None
     db_name: str | None = None
+    # On Cloud Run this is the Cloud SQL instance's private IP, reached over
+    # Direct VPC egress. There is no Auth Proxy socket in this design: the
+    # managed /cloudsql socket is the public-IP path, and mixing it with a
+    # private-only instance is how a deployment ends up unable to connect.
     db_host: str | None = None
     db_port: int = Field(default=5432, ge=1, le=65535)
-    # Cloud SQL connects over a Unix socket: /cloudsql/PROJECT:REGION:INSTANCE
-    instance_unix_socket: str | None = None
     # Cloud Run multiplies connections by instance count: keep per-instance pool small.
     db_pool_size: int = Field(default=5, ge=1, le=50)
     db_max_overflow: int = Field(default=2, ge=0, le=50)
@@ -46,13 +48,10 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _database_is_configured(self) -> Self:
         configured = self.database_url is not None or bool(
-            self.db_user and self.db_password and self.db_name
+            self.db_user and self.db_password and self.db_name and self.db_host
         )
         if not configured and self.environment != "local":
-            raise ValueError(
-                "Set DATABASE_URL, or DB_USER, DB_PASSWORD and DB_NAME "
-                "with either DB_HOST or INSTANCE_UNIX_SOCKET"
-            )
+            raise ValueError("Set DATABASE_URL, or DB_USER, DB_PASSWORD, DB_NAME and DB_HOST")
         return self
 
     @property
@@ -61,7 +60,7 @@ class Settings(BaseSettings):
         if self.database_url is not None:
             return self.database_url.get_secret_value()
 
-        if not (self.db_user and self.db_password and self.db_name):
+        if not (self.db_user and self.db_password and self.db_name and self.db_host):
             # Only reachable in local development; the validator rejects the
             # rest at startup.
             return LOCAL_DATABASE_URL
@@ -71,10 +70,8 @@ class Settings(BaseSettings):
             username=self.db_user,
             password=self.db_password.get_secret_value(),
             database=self.db_name,
-            host=None if self.instance_unix_socket else self.db_host,
-            port=None if self.instance_unix_socket else self.db_port,
-            # psycopg takes the Cloud SQL socket directory as the `host` param.
-            query={"host": self.instance_unix_socket} if self.instance_unix_socket else {},
+            host=self.db_host,
+            port=self.db_port,
         )
         return url.render_as_string(hide_password=False)
 

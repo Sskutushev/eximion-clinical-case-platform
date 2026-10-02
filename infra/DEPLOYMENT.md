@@ -12,7 +12,7 @@ Artifact Registry ──► Cloud Run (frontend, public)
                              │  server-side fetch, ID token
                              ▼
                       Cloud Run (backend, IAM-only: ingress=all, no-allow-unauthenticated)
-                             │  Cloud SQL connector (private IP)
+                             │  private IP :5432 over Direct VPC egress
                              ▼
                       Cloud SQL for PostgreSQL 17
    Secret Manager ──────────┘   (DB password, admin API key)
@@ -98,9 +98,14 @@ gcloud sql instances create "${SQL_INSTANCE}" \
   --enable-point-in-time-recovery \
   --no-assign-ip \
   --network="projects/${PROJECT_ID}/global/networks/default" \
+  --ssl-mode=ENCRYPTED_ONLY \
   --database-flags=max_connections=200
 
 gcloud sql databases create "${DB_NAME}" --instance="${SQL_INSTANCE}"
+
+# The instance has exactly one address, the private one. The services connect to it.
+DB_PRIVATE_IP="$(gcloud sql instances describe "${SQL_INSTANCE}" \
+  --format='get(ipAddresses[0].ipAddress)')"
 
 # Generated locally, stored only in Secret Manager. Never echoed, never in git.
 DB_PASSWORD="$(openssl rand -base64 32)"
@@ -112,8 +117,19 @@ the audit record of a competition.
 
 Each Cloud Run service below is deployed with **Direct VPC egress**
 (`--network` / `--subnet`), which is the current recommended path and avoids
-running a Serverless VPC Access connector. The Cloud SQL connector then attaches
-the instance's Unix socket at `/cloudsql/PROJECT:REGION:INSTANCE`.
+running a Serverless VPC Access connector. Through that path the application
+connects to the instance's private IP on port 5432 — `DB_HOST` — as an ordinary
+PostgreSQL client. `--ssl-mode=ENCRYPTED_ONLY` makes the instance refuse a
+plaintext session, and psycopg negotiates TLS by default, so the traffic is
+encrypted inside the VPC as well.
+
+**One connection path, deliberately.** The managed `--set-cloudsql-instances`
+Unix socket is the Auth Proxy path; by default it reaches the instance over its
+public IP, which this instance does not have. Pairing it with a private-only
+instance either requires the proxy in private-IP mode or does not connect at all.
+The first runbook mixed the two. Now there is no proxy, no socket and no
+`cloudsql.client` role: the database is reached by network path plus password,
+and the network path is the VPC.
 
 ## 4. Secrets
 
@@ -129,7 +145,7 @@ into an image layer and never passed as `docker build --build-arg`.
 **Cloud Run does not expand variable references inside environment values.** A
 `DATABASE_URL` containing `${DB_PASSWORD}` would arrive at the process with that
 text as the password. So the service receives `DB_USER`, `DB_PASSWORD`,
-`DB_NAME` and `INSTANCE_UNIX_SOCKET` separately and assembles the URL at
+`DB_NAME` and `DB_HOST` separately and assembles the URL at
 runtime (`Settings.sqlalchemy_url`), which also escapes a generated password
 containing `/`, `@` or `:` correctly. `tests/test_config.py` covers both.
 
@@ -142,22 +158,18 @@ for sa in "${BACKEND_SA}" "${FRONTEND_SA}" "${MIGRATOR_SA}" "${EXTRACTION_SA}"; 
   gcloud iam service-accounts create "${sa}" --display-name="${sa}"
 done
 
-# Backend: Cloud SQL, and its two secrets. It does not call Vertex AI —
-# extraction does — so it gets no aiplatform role.
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/cloudsql.client"
+# Backend: its two secrets. No cloudsql.client — that role authorizes the Auth
+# Proxy and the connectors, and over private IP the database is reached by
+# network path plus password, not by IAM. It does not call Vertex AI —
+# extraction does — so it gets no aiplatform role either.
 for secret in eximion-db-password eximion-admin-api-key; do
   gcloud secrets add-iam-policy-binding "${secret}" \
     --member="serviceAccount:${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 done
 
-# Migrator: Cloud SQL and the database password only. It runs DDL, so it is kept
-# separate from the serving identity and is attached to no long-running service.
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/cloudsql.client"
+# Migrator: the database password only. It runs DDL, so it is kept separate from
+# the serving identity and is attached to no long-running service.
 gcloud secrets add-iam-policy-binding eximion-db-password \
   --member="serviceAccount:${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
@@ -181,16 +193,13 @@ instances would race on the same DDL, and a failed migration would crash-loop
 the service instead of failing one job.
 
 ```bash
-INSTANCE_CONN="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-
 gcloud run jobs deploy eximion-migrate \
   --image="${BACKEND_IMAGE}" \
   --region="${REGION}" \
   --service-account="${MIGRATOR_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --network=default --subnet=default --vpc-egress=private-ranges-only \
-  --set-cloudsql-instances="${INSTANCE_CONN}" \
   --set-secrets="DB_PASSWORD=eximion-db-password:latest" \
-  --set-env-vars="ENVIRONMENT=production,DB_USER=${DB_USER},DB_NAME=${DB_NAME},INSTANCE_UNIX_SOCKET=/cloudsql/${INSTANCE_CONN}" \
+  --set-env-vars="ENVIRONMENT=production,DB_USER=${DB_USER},DB_NAME=${DB_NAME},DB_HOST=${DB_PRIVATE_IP}" \
   --command="alembic" --args="upgrade,head" \
   --max-retries=0 --task-timeout=10m
 
@@ -214,9 +223,8 @@ gcloud run deploy eximion-backend \
   --region="${REGION}" \
   --service-account="${BACKEND_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --network=default --subnet=default --vpc-egress=private-ranges-only \
-  --set-cloudsql-instances="${INSTANCE_CONN}" \
   --set-secrets="DB_PASSWORD=eximion-db-password:latest,ADMIN_API_KEY=eximion-admin-api-key:latest" \
-  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,DB_USER=${DB_USER},DB_NAME=${DB_NAME},INSTANCE_UNIX_SOCKET=/cloudsql/${INSTANCE_CONN},DB_POOL_SIZE=5,DB_MAX_OVERFLOW=2" \
+  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,DB_USER=${DB_USER},DB_NAME=${DB_NAME},DB_HOST=${DB_PRIVATE_IP},DB_POOL_SIZE=5,DB_MAX_OVERFLOW=2" \
   --min-instances=1 --max-instances=10 --concurrency=80 \
   --cpu=1 --memory=512Mi --timeout=30s \
   --ingress=all \

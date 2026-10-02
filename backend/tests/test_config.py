@@ -18,6 +18,7 @@ def _settings(**overrides: object) -> Settings:
         "db_user": "eximion_app",
         "db_password": SecretStr("s3cret"),
         "db_name": "eximion",
+        "db_host": "10.0.0.5",
     }
     return Settings(**{**base, **overrides})  # type: ignore[arg-type]
 
@@ -28,23 +29,15 @@ def test_explicit_url_is_used_as_is() -> None:
     assert settings.sqlalchemy_url == "postgresql+psycopg://u:p@host:5432/db"
 
 
-def test_cloud_sql_socket_is_passed_as_the_host_query_parameter() -> None:
-    settings = _settings(instance_unix_socket="/cloudsql/demo:europe-west1:eximion-pg")
-
-    url = make_url(settings.sqlalchemy_url)
-
-    assert url.host is None
-    assert url.query["host"] == "/cloudsql/demo:europe-west1:eximion-pg"
-    assert url.database == "eximion"
-    assert url.username == "eximion_app"
-
-
-def test_tcp_host_is_used_when_there_is_no_socket() -> None:
+def test_private_ip_host_and_port_are_used_as_given() -> None:
+    """Cloud Run reaches Cloud SQL over its private IP, not an Auth Proxy socket."""
     settings = _settings(db_host="10.0.0.5", db_port=5433)
 
     url = make_url(settings.sqlalchemy_url)
 
     assert (url.host, url.port) == ("10.0.0.5", 5433)
+    assert url.database == "eximion"
+    assert url.username == "eximion_app"
     assert "host" not in url.query
 
 
@@ -56,7 +49,9 @@ def test_password_special_characters_survive_the_round_trip() -> None:
     assert make_url(settings.sqlalchemy_url).password == password
 
 
-@pytest.mark.parametrize("missing", [{"db_user": None}, {"db_password": None}, {"db_name": None}])
+@pytest.mark.parametrize(
+    "missing", [{"db_user": None}, {"db_password": None}, {"db_name": None}, {"db_host": None}]
+)
 def test_incomplete_configuration_is_rejected_outside_local(missing: dict[str, object]) -> None:
     with pytest.raises(ValidationError, match="DATABASE_URL"):
         _settings(environment="production", admin_api_key=SecretStr("k"), **missing)
@@ -71,8 +66,6 @@ def test_local_falls_back_to_the_compose_database() -> None:
 
 def test_a_url_with_an_unexpanded_variable_is_visible_as_such() -> None:
     """Guards the Cloud Run footgun: the value arrives literally, not expanded."""
-    settings = Settings(
-        database_url=SecretStr("postgresql+psycopg://u:${DB_PASSWORD}@/db?host=/cloudsql/x")
-    )
+    settings = Settings(database_url=SecretStr("postgresql+psycopg://u:${DB_PASSWORD}@10.0.0.5/db"))
 
     assert "${DB_PASSWORD}" in settings.sqlalchemy_url
