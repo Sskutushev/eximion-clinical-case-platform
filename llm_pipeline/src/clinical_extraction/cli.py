@@ -26,6 +26,12 @@ from clinical_extraction.errors import DecisionError, ExtractionError
 from clinical_extraction.evals.dataset import DEFAULT_DATASET, load_dataset
 from clinical_extraction.evals.decisions import reference_provider, run_decision_eval
 from clinical_extraction.evals.fixtures import build_fixtures
+from clinical_extraction.evals.jev_simulator import (
+    SIMULATED_MODEL,
+    JevSimulator,
+    SimulatorConfig,
+    make_server,
+)
 from clinical_extraction.evals.runner import run_eval
 from clinical_extraction.extractor import ClinicalCaseExtractor
 from clinical_extraction.ml.datasets import finding_category_records
@@ -200,6 +206,35 @@ def _run_eval_local(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_simulator(args: argparse.Namespace) -> int:  # pragma: no cover - serves forever
+    simulator = JevSimulator(
+        load_dataset(args.dataset),
+        SimulatorConfig(
+            error_rate=args.error_rate, unsure_rate=args.unsure_rate, fail_every=args.fail_every
+        ),
+    )
+    server = make_server(simulator, args.port)
+    print(
+        f"Jev simulator on http://127.0.0.1:{args.port} (model {SIMULATED_MODEL}). "
+        f"Set TYPESAFE_BASE_URL to that address. Ctrl+C to stop.",
+        file=sys.stderr,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.server_close()
+    return 0
+
+
+def _run_review_load(args: argparse.Namespace) -> int:
+    from clinical_extraction.evals.review_load import sweep  # noqa: PLC0415 - loads the SDK
+
+    # The sweep makes thousands of local requests; per-case log lines are noise here.
+    logging.getLogger("clinical_extraction").setLevel(logging.WARNING)
+    _write_output(sweep(load_dataset(args.dataset), seeds=args.seeds), args.output)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="clinical-extraction")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -256,6 +291,28 @@ def build_parser() -> argparse.ArgumentParser:
     local_parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     local_parser.add_argument("--models-dir", type=Path, default=MODELS_DIR)
     local_parser.set_defaults(handler=_run_eval_local)
+
+    simulator_parser = subparsers.add_parser(
+        "simulate-jev",
+        help="Serve a local stand-in for the TypeSafe API (answers from ground truth, not Jev)",
+    )
+    simulator_parser.add_argument("--port", type=int, default=8765)
+    simulator_parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
+    simulator_parser.add_argument("--error-rate", type=float, default=0.05)
+    simulator_parser.add_argument("--unsure-rate", type=float, default=0.05)
+    simulator_parser.add_argument(
+        "--fail-every", type=int, default=0, help="Fail every Nth request once with 503."
+    )
+    simulator_parser.set_defaults(handler=_run_simulator)
+
+    load_parser = subparsers.add_parser(
+        "simulate-review-load",
+        help="Measure how verifier noise turns into review load (simulator, not Jev)",
+    )
+    load_parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
+    load_parser.add_argument("--seeds", type=int, default=20)
+    load_parser.add_argument("--output", type=Path, default=None)
+    load_parser.set_defaults(handler=_run_review_load)
     return parser
 
 
