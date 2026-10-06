@@ -3,3 +3,4 @@
 *.png binary
 contracts/openapi.json linguist-generated=true
 frontend/src/generated/** linguist-generated=true
+llm_pipeline/models/**/model.json linguist-generated=true -diff

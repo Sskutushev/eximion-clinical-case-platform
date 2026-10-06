@@ -1,0 +1,84 @@
+{"id": "seed-history-01", "text": "Type 2 diabetes for ten years", "label": "history"}
+{"id": "seed-history-02", "text": "Previous myocardial infarction in 2019", "label": "history"}
+{"id": "seed-history-03", "text": "Takes metformin and ramipril", "label": "history"}
+{"id": "seed-history-04", "text": "Former smoker, quit five years ago", "label": "history"}
+{"id": "seed-history-05", "text": "Appendicectomy as a child", "label": "history"}
+{"id": "seed-history-06", "text": "Recent travel to rural India", "label": "history"}
+{"id": "seed-history-07", "text": "Drinks 30 units of alcohol per week", "label": "history"}
+{"id": "seed-history-08", "text": "Father died of colon cancer at 52", "label": "history"}
+{"id": "seed-history-09", "text": "Long-term inhaled corticosteroids for asthma", "label": "history"}
+{"id": "seed-history-10", "text": "On warfarin for atrial fibrillation", "label": "history"}
+{"id": "seed-history-11", "text": "Prior episode of renal colic", "label": "history"}
+{"id": "seed-history-12", "text": "Works on a farm with daily animal contact", "label": "history"}
+{"id": "seed-symptom-01", "text": "Intermittent palpitations for a week", "label": "symptom"}
+{"id": "seed-symptom-02", "text": "Dry cough for three weeks", "label": "symptom"}
+{"id": "seed-symptom-03", "text": "Shortness of breath on climbing stairs", "label": "symptom"}
+{"id": "seed-symptom-04", "text": "Pain on swallowing", "label": "symptom"}
+{"id": "seed-symptom-05", "text": "Blurred vision in the right eye", "label": "symptom"}
+{"id": "seed-symptom-06", "text": "Night sweats and itching", "label": "symptom"}
+{"id": "seed-symptom-07", "text": "Lower back pain radiating down the left leg", "label": "symptom"}
+{"id": "seed-symptom-08", "text": "Dizziness on standing", "label": "symptom"}
+{"id": "seed-symptom-09", "text": "Loss of appetite", "label": "symptom"}
+{"id": "seed-symptom-10", "text": "Diarrhoea six times a day", "label": "symptom"}
+{"id": "seed-symptom-11", "text": "Numbness in both feet", "label": "symptom"}
+{"id": "seed-symptom-12", "text": "Wheeze worse at night", "label": "symptom"}
+{"id": "seed-vital_sign-01", "text": "Blood pressure 92/58 mmHg", "label": "vital_sign"}
+{"id": "seed-vital_sign-02", "text": "Pulse 132 beats per minute, irregular", "label": "vital_sign"}
+{"id": "seed-vital_sign-03", "text": "Oxygen saturation 86% on air", "label": "vital_sign"}
+{"id": "seed-vital_sign-04", "text": "Respiratory rate 32 breaths per minute", "label": "vital_sign"}
+{"id": "seed-vital_sign-05", "text": "Temperature 35.1 C", "label": "vital_sign"}
+{"id": "seed-vital_sign-06", "text": "Heart rate 48/min", "label": "vital_sign"}
+{"id": "seed-vital_sign-07", "text": "Systolic blood pressure 210 mmHg", "label": "vital_sign"}
+{"id": "seed-vital_sign-08", "text": "SpO2 95% on 2 L oxygen", "label": "vital_sign"}
+{"id": "seed-vital_sign-09", "text": "Tympanic temperature 39.4 C", "label": "vital_sign"}
+{"id": "seed-vital_sign-10", "text": "Mean arterial pressure 58 mmHg", "label": "vital_sign"}
+{"id": "seed-vital_sign-11", "text": "Pulse 110 bpm and regular", "label": "vital_sign"}
+{"id": "seed-vital_sign-12", "text": "Respiratory rate 9/min", "label": "vital_sign"}
+{"id": "seed-physical_exam-01", "text": "Bilateral pitting oedema to the knees", "label": "physical_exam"}
+{"id": "seed-physical_exam-02", "text": "Reduced air entry at the left base", "label": "physical_exam"}
+{"id": "seed-physical_exam-03", "text": "Jaundiced sclerae", "label": "physical_exam"}
+{"id": "seed-physical_exam-04", "text": "Liver edge palpable 4 cm below the costal margin", "label": "physical_exam"}
+{"id": "seed-physical_exam-05", "text": "Pansystolic murmur at the apex", "label": "physical_exam"}
+{"id": "seed-physical_exam-06", "text": "Right-sided facial droop", "label": "physical_exam"}
+{"id": "seed-physical_exam-07", "text": "Bibasal crepitations on auscultation", "label": "physical_exam"}
+{"id": "seed-physical_exam-08", "text": "Positive Murphy's sign", "label": "physical_exam"}
+{"id": "seed-physical_exam-09", "text": "Dry mucous membranes with reduced skin turgor", "label": "physical_exam"}
+{"id": "seed-physical_exam-10", "text": "Positive Kernig's sign", "label": "physical_exam"}
+{"id": "seed-physical_exam-11", "text": "Absent bowel sounds", "label": "physical_exam"}
+{"id": "seed-physical_exam-12", "text": "Splenomegaly on palpation", "label": "physical_exam"}
+{"id": "seed-laboratory-01", "text": "Haemoglobin 78 g/L", "label": "laboratory"}
+{"id": "seed-laboratory-02", "text": "Serum sodium 121 mmol/L", "label": "laboratory"}
+{"id": "seed-laboratory-03", "text": "Creatinine 312 umol/L", "label": "laboratory"}
+{"id": "seed-laboratory-04", "text": "Potassium 6.8 mmol/L", "label": "laboratory"}
+{"id": "seed-laboratory-05", "text": "Platelet count 42 x10^9/L", "label": "laboratory"}
+{"id": "seed-laboratory-06", "text": "HbA1c 92 mmol/mol", "label": "laboratory"}
+{"id": "seed-laboratory-07", "text": "D-dimer 4.2 mg/L", "label": "laboratory"}
+{"id": "seed-laboratory-08", "text": "Lactate 5.1 mmol/L", "label": "laboratory"}
+{"id": "seed-laboratory-09", "text": "Blood cultures grew Staphylococcus aureus", "label": "laboratory"}
+{"id": "seed-laboratory-10", "text": "INR 3.8", "label": "laboratory"}
+{"id": "seed-laboratory-11", "text": "Bilirubin 96 umol/L", "label": "laboratory"}
+{"id": "seed-laboratory-12", "text": "Arterial pO2 7.2 kPa", "label": "laboratory"}
+{"id": "seed-imaging-01", "text": "Chest X-ray: bilateral perihilar shadowing", "label": "imaging"}
+{"id": "seed-imaging-02", "text": "CT abdomen: free air under the diaphragm", "label": "imaging"}
+{"id": "seed-imaging-03", "text": "Echocardiogram: ejection fraction 25%", "label": "imaging"}
+{"id": "seed-imaging-04", "text": "MRI brain: acute infarct in the left MCA territory", "label": "imaging"}
+{"id": "seed-imaging-05", "text": "Renal ultrasound: right hydronephrosis", "label": "imaging"}
+{"id": "seed-imaging-06", "text": "ECG: atrial fibrillation with rapid ventricular response", "label": "imaging"}
+{"id": "seed-imaging-07", "text": "CT head: no acute intracranial abnormality", "label": "imaging"}
+{"id": "seed-imaging-08", "text": "Doppler ultrasound: thrombus in the femoral vein", "label": "imaging"}
+{"id": "seed-imaging-09", "text": "Abdominal X-ray: dilated small bowel loops", "label": "imaging"}
+{"id": "seed-imaging-10", "text": "CT chest: spiculated mass in the right upper lobe", "label": "imaging"}
+{"id": "seed-imaging-11", "text": "Ultrasound: thickened gallbladder wall", "label": "imaging"}
+{"id": "seed-imaging-12", "text": "Wrist X-ray: displaced distal radius fracture", "label": "imaging"}
+{"id": "seed-other-01", "text": "No known drug allergies", "label": "other"}
+{"id": "seed-other-02", "text": "Lives alone and fully independent", "label": "other"}
+{"id": "seed-other-03", "text": "Declined a blood transfusion", "label": "other"}
+{"id": "seed-other-04", "text": "Interpreter required for the consultation", "label": "other"}
+{"id": "seed-other-05", "text": "Unable to give a reliable history", "label": "other"}
+{"id": "seed-other-06", "text": "Next of kin informed", "label": "other"}
+{"id": "seed-other-07", "text": "Requested a female clinician", "label": "other"}
+{"id": "seed-other-08", "text": "Advance directive in place", "label": "other"}
+{"id": "seed-other-09", "text": "Wears a hearing aid", "label": "other"}
+{"id": "seed-other-10", "text": "Transferred from a nursing home", "label": "other"}
+{"id": "seed-other-11", "text": "Brought in by ambulance", "label": "other"}
+{"id": "seed-other-12", "text": "Attended with a carer", "label": "other"}

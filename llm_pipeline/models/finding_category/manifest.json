@@ -1,0 +1,145 @@
+{
+  "dataset": {
+    "fingerprint": "2d692bafef53eb1021194c6d5b773ff6516feaba9da883a1d0ddf97742d2e9f4",
+    "held_out_examples": 20,
+    "label_sources": {
+      "synthetic_ground_truth": 69,
+      "synthetic_seed": 84
+    },
+    "train_examples": 133
+  },
+  "gate": {
+    "passed": false,
+    "reasons": [
+      "held-out set has 20 examples, needs 200",
+      "accuracy 0.6 is below 0.95",
+      "macro F1 0.5391 is below 0.9"
+    ]
+  },
+  "held_out": {
+    "accuracy": 0.6,
+    "errors": [
+      {
+        "expected": "history",
+        "predicted": "imaging",
+        "record_id": "case-002/findings/0"
+      },
+      {
+        "expected": "history",
+        "predicted": "symptom",
+        "record_id": "case-002/findings/1"
+      },
+      {
+        "expected": "other",
+        "predicted": "vital_sign",
+        "record_id": "case-008/findings/1"
+      },
+      {
+        "expected": "symptom",
+        "predicted": "imaging",
+        "record_id": "case-008/findings/3"
+      },
+      {
+        "expected": "history",
+        "predicted": "physical_exam",
+        "record_id": "case-009/findings/0"
+      },
+      {
+        "expected": "symptom",
+        "predicted": "other",
+        "record_id": "case-009/findings/1"
+      },
+      {
+        "expected": "symptom",
+        "predicted": "history",
+        "record_id": "case-009/findings/2"
+      },
+      {
+        "expected": "laboratory",
+        "predicted": "physical_exam",
+        "record_id": "case-009/findings/6"
+      }
+    ],
+    "examples": 20,
+    "gate_criteria": {
+      "min_accuracy": 0.95,
+      "min_examples": 200.0,
+      "min_macro_f1": 0.9
+    },
+    "macro_f1": 0.5391,
+    "per_label": {
+      "history": {
+        "f1": 0.3333,
+        "precision": 0.5,
+        "recall": 0.25,
+        "support": 4
+      },
+      "imaging": {
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "support": 2
+      },
+      "laboratory": {
+        "f1": 0.6667,
+        "precision": 1.0,
+        "recall": 0.5,
+        "support": 2
+      },
+      "other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 1
+      },
+      "physical_exam": {
+        "f1": 0.75,
+        "precision": 0.6,
+        "recall": 1.0,
+        "support": 3
+      },
+      "symptom": {
+        "f1": 0.5,
+        "precision": 0.6667,
+        "recall": 0.4,
+        "support": 5
+      },
+      "vital_sign": {
+        "f1": 0.8571,
+        "precision": 0.75,
+        "recall": 1.0,
+        "support": 3
+      }
+    }
+  },
+  "hyperparameters": {
+    "c": 10.0,
+    "class_weight": "balanced",
+    "features": {
+      "char_ngrams": [
+        3,
+        5
+      ],
+      "word_ngrams": [
+        1,
+        2
+      ]
+    },
+    "max_iter": 5000,
+    "seed": 13
+  },
+  "labels": [
+    "history",
+    "imaging",
+    "laboratory",
+    "other",
+    "physical_exam",
+    "symptom",
+    "vital_sign"
+  ],
+  "model_sha256": "e4f2b4efc4f1fc15446e01abe2ae28d081e8b7a37d35cdace1a9e1e8d0296129",
+  "model_type": "tfidf-logreg-v1",
+  "model_version": "finding_category-tfidf-logreg-v1-2d692bafef",
+  "task": "finding_category",
+  "task_version": "finding-category-v1"
+}
