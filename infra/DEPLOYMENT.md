@@ -327,8 +327,9 @@ Notes:
     --set-secrets="TYPESAFE_API_KEY=eximion-typesafe-api-key:latest"
   ```
 
-  Synthetic data only until a BAA with TypeSafe is in place. The local models ship
-  inside the image and need no secret.
+  Synthetic data only, unless a privacy and security review confirms PHI use is
+  permitted and the required contractual controls, including a BAA if applicable, are
+  in place. The local models ship inside the image and need no secret.
 
 ## 10. Verify, then roll back if needed
 

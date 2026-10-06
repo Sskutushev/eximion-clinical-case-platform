@@ -65,8 +65,10 @@ class VerificationPolicy:
     def _check(
         self, case: ClinicalCaseExtraction, query: DecisionQuery, decision: Decision
     ) -> ReviewReason | None:
-        if query.task is DecisionTask.DIAGNOSIS_LEAK:
-            outcome = self._leak(decision)
+        leak = self._leak(decision) if query.task is DecisionTask.DIAGNOSIS_LEAK else None
+        if leak is not None:
+            # A likely leak is flagged even when the verifier is unsure of it.
+            outcome: tuple[Verdict, str] | None = leak
         elif decision.confidence < self._thresholds.min_confidence:
             # A low-confidence decision is reviewable, not a reason to guess.
             outcome = (Verdict.UNCERTAIN, f"{query.task} is unclear")
@@ -74,8 +76,12 @@ class VerificationPolicy:
             outcome = _support(decision)
         elif query.task is DecisionTask.FINDING_CATEGORY:
             outcome = _category(case, query, decision)
-        else:
+        elif query.task is DecisionTask.DIAGNOSIS_STATUS:
             outcome = _status(case, query, decision)
+        elif query.task is DecisionTask.FINDING_COMPLETENESS:
+            outcome = _completeness(decision)
+        else:
+            outcome = None
 
         if outcome is None:
             return None
@@ -89,12 +95,18 @@ class VerificationPolicy:
         )
 
     def _leak(self, decision: Decision) -> tuple[Verdict, str] | None:
-        # A leak gives the answer away, so this is judged on the yes-probability
-        # alone, with its own threshold, rather than on confidence.
+        # A leak gives the answer away, so it has its own, lower bar than the
+        # general confidence threshold. A "no" still has to be a confident one.
         yes = decision.probabilities.get(YES, 0.0)
         if yes >= self._thresholds.leak_flag_probability:
             return Verdict.FLAGGED, f"may reveal the diagnosis (p={yes:.2f})"
         return None
+
+
+def _completeness(decision: Decision) -> tuple[Verdict, str] | None:
+    if decision.label != "complete":
+        return Verdict.FLAGGED, "the source may state findings the extraction missed"
+    return None
 
 
 def _support(decision: Decision) -> tuple[Verdict, str] | None:

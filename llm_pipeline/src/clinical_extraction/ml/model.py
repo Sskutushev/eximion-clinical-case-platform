@@ -33,6 +33,13 @@ class TextClassifier:
     coefs: Mapping[str, tuple[float, ...]]
     intercept: tuple[float, ...]
 
+    def coverage(self, text: str) -> float:
+        """Share of the text's features the model saw in training, 0..1."""
+        features = extract_features(text, self.config)
+        if not features:
+            return 0.0
+        return sum(name in self.idf for name in features) / len(features)
+
     def predict_proba(self, text: str) -> dict[str, float]:
         vector = tfidf_vector(extract_features(text, self.config), self.idf)
         logits = list(self.intercept)

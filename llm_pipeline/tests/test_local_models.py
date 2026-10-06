@@ -181,3 +181,31 @@ def test_a_local_model_cannot_go_primary_before_its_gate() -> None:
         DecisionRouter({"local": local}, routes)
     # An explicit experiment may still do it, knowingly.
     DecisionRouter({"local": local}, routes, allow_ungated_local=True)
+
+
+def test_text_the_model_has_never_seen_carries_no_confidence() -> None:
+    local = LocalDecisionProvider.from_directory()
+    query = DecisionQuery(
+        id="findings.0.category",
+        task=DecisionTask.FINDING_CATEGORY,
+        target="findings[0]",
+        subject="Qxzv wjkp yybf",
+        index=0,
+    )
+
+    decision = local.decide("source", [query]).decisions[query.id]
+
+    assert decision.confidence == 0.0
+
+
+def test_familiar_clinical_text_keeps_its_confidence() -> None:
+    local = LocalDecisionProvider.from_directory()
+    query = DecisionQuery(
+        id="findings.0.category",
+        task=DecisionTask.FINDING_CATEGORY,
+        target="findings[0]",
+        subject="Serum sodium 128 mmol/L",
+        index=0,
+    )
+
+    assert local.decide("source", [query]).decisions[query.id].confidence > 0.0

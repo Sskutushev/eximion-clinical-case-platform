@@ -12,8 +12,8 @@ A verifier that flags everything gets perfect recall and is useless, so the
 two sides are always reported together.
 
 Defects come from the hand-written ground truth, not from a model, so they are
-known exactly. Missing findings are not planted: no current check looks for
-them, and claiming coverage there would be false.
+known exactly. A dropped finding is planted too; the check that should catch it,
+finding_completeness, is experimental and reported on its own line.
 """
 
 import copy
@@ -110,8 +110,19 @@ def _presentation_leak(
     return payload
 
 
+def _missing_finding(
+    payload: dict[str, Any], example: EvalExample, examples: list[EvalExample]
+) -> dict[str, Any] | None:
+    del example, examples
+    if len(payload["findings"]) < 2:  # noqa: PLR2004 - the contract needs one finding
+        return None
+    payload["findings"] = payload["findings"][:-1]
+    return payload
+
+
 MUTATIONS: dict[str, Mutation] = {
     "unsupported_finding": _unsupported_finding,
+    "missing_finding": _missing_finding,
     "wrong_category": _wrong_category,
     "wrong_diagnosis_status": _differential_marked_established,
     "title_leak": _title_leak,
@@ -121,6 +132,7 @@ MUTATIONS: dict[str, Mutation] = {
 # Which check is supposed to catch each defect.
 EXPECTED_CHECK = {
     "unsupported_finding": DecisionTask.FINDING_SUPPORT,
+    "missing_finding": DecisionTask.FINDING_COMPLETENESS,
     "wrong_category": DecisionTask.FINDING_CATEGORY,
     "wrong_diagnosis_status": DecisionTask.DIAGNOSIS_STATUS,
     "title_leak": DecisionTask.DIAGNOSIS_LEAK,
@@ -170,6 +182,15 @@ def _true_label(
         if match is None:
             return "not_stated"
         return "established" if match.is_correct else "differential"
+    if query.task is DecisionTask.FINDING_COMPLETENESS:
+        covered = all(
+            any(
+                similarity(f.value, extracted) >= SIMILARITY_THRESHOLD
+                for extracted in query.reference
+            )
+            for f in truth.findings
+        )
+        return "complete" if covered else "likely_incomplete"
     leaked = any(normalize(d) in normalize(query.subject) for d in query.reference)
     return YES if leaked else NO
 
@@ -210,12 +231,16 @@ class ScenarioResult:
     calls: int
     input_tokens: int
     shadow: list[tuple[str, str, str]]  # (query_id, shadow_label, primary_label)
+    models: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class DecisionEvalSummary:
     provider: str
-    model: str
+    # What was asked for (an alias such as jev-latest) and what actually answered
+    # (jev-1.13.0). Only the second makes a committed result reproducible.
+    requested_model: str
+    resolved_models: list[str]
     scenarios: int
     clean_cases: int
     planted_defects: int
@@ -259,6 +284,7 @@ def _run_scenario(verifier: CaseVerifier, scenario: Scenario) -> ScenarioResult:
         calls=sum(u.calls for u in report.usage if u.provider != "local"),
         input_tokens=sum(u.input_tokens for u in report.usage),
         shadow=[(s.query_id, s.shadow_label, s.primary_label) for s in report.shadow],
+        models=tuple(u.model for u in report.usage if u.provider != "local"),
     )
 
 
@@ -298,7 +324,7 @@ def run_decision_eval(
     examples: list[EvalExample],
     *,
     provider: str,
-    model: str,
+    requested_model: str,
     usd_per_m_input: float = 0.0,
     delay_seconds: float = 0.0,
 ) -> DecisionEvalSummary:
@@ -325,7 +351,8 @@ def run_decision_eval(
 
     return DecisionEvalSummary(
         provider=provider,
-        model=model,
+        requested_model=requested_model,
+        resolved_models=sorted({model for r in results for model in r.models}),
         scenarios=len(results),
         clean_cases=len(clean),
         planted_defects=len(planted),

@@ -48,10 +48,11 @@ _SUBJECT_KEY: Mapping[DecisionTask, str] = {
 
 def build_question(query: DecisionQuery) -> Question:
     spec = TASKS[query.task]
-    instructions: dict[str, Any] = {
-        "question": spec.question,
-        _SUBJECT_KEY[query.task]: query.subject,
-    }
+    instructions: dict[str, Any] = {"question": spec.question}
+    if query.task is DecisionTask.FINDING_COMPLETENESS:
+        instructions["extracted_findings"] = list(query.reference)
+        return Choice(instructions=instructions, criteria=dict(spec.labels))
+    instructions[_SUBJECT_KEY[query.task]] = query.subject
     if spec.kind is TaskKind.BINARY:
         instructions["diagnoses"] = list(query.reference)
         return Noul(

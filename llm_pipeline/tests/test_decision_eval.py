@@ -46,14 +46,19 @@ def test_the_eval_registers_exactly_the_injected_misjudgments() -> None:
     examples = load_dataset()
 
     summary = run_decision_eval(
-        _verifier(reference_provider(examples)), examples, provider="reference", model="ref"
+        _verifier(reference_provider(examples)),
+        examples,
+        provider="reference",
+        requested_model="ref",
     )
 
     assert {f["example_id"] for f in summary.failures} == set(INJECTED_MISJUDGMENTS)
     assert summary.clean_pass_rate == 0.9
-    assert summary.defect_detection_recall == 0.98
-    assert summary.false_accept_rate == 0.02
+    assert summary.planted_defects == 60
+    assert summary.defect_detection_recall == 0.9833
     assert summary.recall_by_defect["title_leak"] == 0.9
+    assert summary.recall_by_defect["missing_finding"] == 1.0
+    assert (summary.requested_model, summary.resolved_models) == ("ref", ["reference-ground-truth"])
     assert summary.verification_unavailable == 0
 
 
@@ -65,7 +70,10 @@ def test_a_verifier_that_flags_everything_is_not_rewarded() -> None:
         return "not_stated", 0.2
 
     summary = run_decision_eval(
-        _verifier(FakeDecisionProvider(paranoid)), examples, provider="paranoid", model="p"
+        _verifier(FakeDecisionProvider(paranoid)),
+        examples,
+        provider="paranoid",
+        requested_model="p",
     )
 
     assert summary.defect_detection_recall == 1.0
@@ -76,7 +84,7 @@ def test_an_outage_is_counted_and_nothing_is_accepted() -> None:
     examples = load_dataset()[:2]
     broken = FakeDecisionProvider(lambda *_: ("x", 1.0), fail=True)
 
-    summary = run_decision_eval(_verifier(broken), examples, provider="down", model="d")
+    summary = run_decision_eval(_verifier(broken), examples, provider="down", requested_model="d")
 
     assert summary.verification_unavailable == summary.scenarios
     assert summary.false_accept_rate == 0.0
