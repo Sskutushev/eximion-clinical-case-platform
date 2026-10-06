@@ -8,6 +8,11 @@ Every file here is committed as produced, including its failures.
 | `gemini-2.5-flash-extract-v1.json` | earlier live run of the previous prompt, 2 of 10 cases (free-tier quota) |
 | `fake-eval.json` | offline run, fake provider with four planted defects |
 | `decision-eval-reference.json` | offline verifier eval, see `docs/DECISION_MODEL_MIGRATION.md` |
+| `simulated-jev-decisions.json` | the same eval over HTTP against the Jev **simulator** (`jev-sim`), 5% wrong + 5% hesitant answers |
+| `simulated-review-load.json` | clean pass rate against simulator noise, 20 seeds per level |
+
+The two `simulated-*` files measure our pipeline, not Jev. Live Jev results will be
+`jev-decisions.json`.
 
 ## The current prompt, live
 

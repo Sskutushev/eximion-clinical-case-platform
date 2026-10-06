@@ -1,0 +1,42 @@
+{
+  "simulated": true,
+  "questions_per_case": 19.5,
+  "seeds": 20,
+  "rows": [
+    {
+      "noisy_answer_share": 0.005,
+      "expected_clean_pass_rate": 0.907,
+      "clean_pass_rate": 0.9,
+      "defect_detection_recall": 1.0,
+      "false_accept_rate": 0.0
+    },
+    {
+      "noisy_answer_share": 0.01,
+      "expected_clean_pass_rate": 0.822,
+      "clean_pass_rate": 0.815,
+      "defect_detection_recall": 1.0,
+      "false_accept_rate": 0.0
+    },
+    {
+      "noisy_answer_share": 0.02,
+      "expected_clean_pass_rate": 0.674,
+      "clean_pass_rate": 0.675,
+      "defect_detection_recall": 1.0,
+      "false_accept_rate": 0.0
+    },
+    {
+      "noisy_answer_share": 0.05,
+      "expected_clean_pass_rate": 0.368,
+      "clean_pass_rate": 0.395,
+      "defect_detection_recall": 0.9975,
+      "false_accept_rate": 0.0025
+    },
+    {
+      "noisy_answer_share": 0.1,
+      "expected_clean_pass_rate": 0.128,
+      "clean_pass_rate": 0.1,
+      "defect_detection_recall": 0.9992,
+      "false_accept_rate": 0.0008
+    }
+  ]
+}

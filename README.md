@@ -321,6 +321,11 @@ diagnosis established, does the title give it away.
   router will not let it answer for real until it passes a held-out gate.
 - **Scoring is untouched.** Participants are still scored by deterministic code.
 
+A protocol-compatible Jev simulator runs the whole chain over real HTTP without a key.
+It showed that safety holds even when the verifier is noisy, and that review load
+depends on per-question reliability: about 1% noisy answers keeps four in five correct
+cases out of the review queue. Live Jev numbers are pending a paid key.
+
 This stage adds checks, not savings (Jev's cost is an estimate until a live run): the savings come later, when a cheap extractor plus
 verification sends only flagged cases to Gemini. Design, measurements and the migration
 plan: [`docs/DECISION_MODEL_MIGRATION.md`](docs/DECISION_MODEL_MIGRATION.md).
@@ -335,7 +340,7 @@ uv run clinical-extraction extract --file case.txt --verify typesafe
 | Suite | What it covers |
 |---|---|
 | `backend` — 53 tests, 98% | real PostgreSQL via Alembic; create/read/score; answer-key non-leakage on the raw body; normalization; submission persistence; transaction rollback; migration up/down/up; drift check; production fail-closed config; 503 readiness; no internals in errors |
-| `llm_pipeline` — 128 tests, 95% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK; the Jev adapter against the real SDK with mocked HTTP; review policy, routing, shadow and fail-closed behaviour; local model integrity, split leakage and retraining reproducibility |
+| `llm_pipeline` — 135 tests, 95% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK; the Jev adapter against the real SDK with mocked HTTP; review policy, routing, shadow and fail-closed behaviour; local model integrity, split leakage and retraining reproducibility |
 | `frontend` — 34 tests | form submission, pending state, score rendering, accessible error handling, finding grouping, dictionary completeness across seven locales, Cloud Run identity tokens |
 | `scripts/smoke.sh` | the real stack: auth required, create → read → score → persist, answer key absent from both API and rendered HTML |
 
