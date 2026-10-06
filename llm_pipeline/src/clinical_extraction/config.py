@@ -54,6 +54,9 @@ class DecisionSettings(BaseSettings):
 
     typesafe_api_key: SecretStr | None = None
     jev_model: str = "jev-latest"
+    # None means TypeSafe's own API. A gateway that serves the same System One
+    # endpoint (Vercel AI Gateway: https://ai-gateway.vercel.sh/typesafe) works too.
+    typesafe_base_url: str | None = None
     typesafe_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
     typesafe_max_retries: int = Field(default=2, ge=0, le=5)
 

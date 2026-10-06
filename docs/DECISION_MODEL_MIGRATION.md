@@ -184,6 +184,12 @@ what a person should review next.
 The split is made by vignette (`case_group_id`). Every record from one case sits on
 one side only, so variants of the same case cannot leak from training into the test.
 
+The ten original vignettes keep a hand-picked split (three held out, covering all
+seven categories). Every new case group, such as a human-reviewed production case, is
+assigned by a stable hash of its id: 20% held-out, 10% dev for choosing thresholds,
+70% train. So the held-out set grows with the data toward the gate's 200 examples,
+and a case never changes sides when more data arrives.
+
 ### The first model: finding category
 
 Chosen first because it has a closed label set, existing labels, a clear metric and
@@ -200,7 +206,9 @@ no generation involved.
 - Inference is plain Python. The runtime image has no numpy or scikit-learn.
 - Out-of-distribution guard: if less than 30% of a text's features were seen in
   training, the softmax answer is mostly intercept, so its confidence is set to 0 and
-  the policy sends it to review.
+  the policy sends it to review. The threshold lives in the manifest, so changing it
+  changes the model version. Held-out metrics report how often the guard fires
+  (`ood_review_rate`) and how familiar typical text is (feature coverage p05 / p50).
 - A test retrains the model and checks it matches the committed one. If the data
   changes and nobody retrains, CI fails.
 
@@ -214,6 +222,7 @@ in code:
 | held-out examples | at least 200 |
 | held-out accuracy | at least 0.95 |
 | held-out macro F1 | at least 0.90 |
+| held-out examples the out-of-distribution guard sends to review | at most 5% |
 
 Passing is necessary, not sufficient. After that the model still runs in shadow
 next to Jev on real traffic, and only a clean comparison there moves the task.
@@ -312,6 +321,7 @@ of 3 held-out vignettes it never saw:
 | held-out macro F1 | 0.54 |
 | accuracy on its own training vignettes | 1.0 |
 | agreement with the primary verifier (shadow) | 0.88 over 69 findings |
+| held-out examples below the OOD threshold | 5% (1 / 20) |
 | promotion gate | **failed**: 20 examples < 200, accuracy < 0.95, F1 < 0.90 |
 
 So it stays in shadow, which is the point of the gate. The gap between 1.0 on
@@ -321,11 +331,68 @@ reviewed labels, not a bigger model: that is what the shadow phase and the revie
 queue are for. Hyperparameters were set before looking at held-out results and were
 not tuned on them.
 
-### 4. Jev, live
+### 4. Jev, live: attempted, blocked by billing
 
-Not run: no TypeSafe key was available. One command produces it
+TypeSafe's own console did not allow creating a key on this account. Through Vercel
+AI Gateway every request reached Jev's endpoint and was refused with 403: first "a
+valid credit card on file", then "free tier users do not have access to this model".
+So there are no Jev numbers yet. One command produces them once a paid key exists
 (`make eval-jev`), and the file name is reserved:
 `llm_pipeline/evals/results/jev-decisions.json`.
+
+That failed run still showed one thing for real: with the provider refusing every
+request, all 70 candidates, the 10 clean ones included, went to review. Not one was
+accepted unchecked.
+
+### 5. The whole chain against a simulated Jev
+
+To check everything except Jev's judgement, `simulate-jev` serves a local stand-in for
+the TypeSafe API: same endpoint, same request and response format, probabilities,
+confidence, token usage and latency. Our side runs unmodified over real HTTP:
+settings, the official SDK with its retries, the adapter, router, policy, local shadow
+and the eval. The stand-in answers from the source text and the ground truth, with a
+set share of wrong and hesitant answers, and names itself `jev-sim` in every response.
+Its numbers measure our pipeline, never Jev.
+
+Default noise (5% wrong, 5% hesitant), one 503 every ten requests
+(`simulated-jev-decisions.json`):
+
+| What | Result |
+|---|---|
+| requests failed for good | 0 of 70, the SDK retried all seven 503s |
+| planted defects caught | 59 of 60 |
+| correct cases accepted | 1 of 10 |
+| latency p50 / p95 | 0.19 s / 0.61 s (simulated) |
+| input tokens per case | about 2,600, close to the earlier estimate of 2,400 |
+
+End to end, real Gemini extracted case-002 and the stand-in checked it. The chain
+held: nine findings extracted, verified in one request, the local model in shadow,
+the case sent to review with three positional reasons and no clinical text. The
+verdicts themselves are not evidence: the stand-in matches words, so it cannot judge
+a paraphrase the way a reading model would.
+
+The clean pass rate is the real finding. With about 20 questions per case and any
+doubtful answer sending the case to review, a noisy share e gives a clean pass rate
+of roughly (1 − e)^20. The sweep (`simulate-review-load`, 20 seeds per level) matches
+that formula:
+
+| Noisy answers per question | Correct cases accepted | Planted defects caught |
+|---|---|---|
+| 0.5% | 90% | 100% |
+| 1% | 82% | 100% |
+| 2% | 68% | 100% |
+| 5% | 40% | 99.8% |
+| 10% | 10% | 99.9% |
+
+Two conclusions:
+
+- **Safety holds under noise.** Even at 10% noisy answers, almost no planted defect
+  gets through. The policy fails toward review, as designed.
+- **Noise costs review time.** For four in five correct cases to pass on their own, the
+  verifier must be wrong or unsure on no more than about 1% of questions. That is the
+  bar for the first live Jev run. If Jev misses it, the policy is not loosened on
+  simulated data: thresholds are calibrated per check on the dev split of real
+  answers, and `false_review_reasons` in the eval shows which check to look at first.
 
 ## Cost, honestly
 
@@ -364,8 +431,9 @@ has to be measured with the same harness before anyone claims it.
 - The verifier eval runs offline against a reference verifier built from the ground
   truth. It proves the checks, the policy and the harness. It says nothing about how
   good Jev is.
-- Jev has not been run live: no TypeSafe key was available. The adapter is tested
-  against the real SDK with a mocked HTTP layer.
+- Jev has not been run live: the attempt was blocked by billing (see above). The
+  adapter is tested against the real SDK with a mocked transport, and the whole chain
+  runs over real HTTP against a protocol-compatible simulator.
 - The completeness check is experimental. Offline it is checked against a reference
   that knows the ground truth; whether Jev judges it well is the open question.
 - Thresholds (`MIN_CONFIDENCE=0.5`, `LEAK_FLAG_PROBABILITY=0.5`) are starting points.
@@ -384,7 +452,14 @@ uv run clinical-extraction eval-local --task finding_category
 uv sync --group ml
 uv run clinical-extraction train-local --task finding_category
 
-# Live, with a TypeSafe key
+# The whole chain over HTTP against the simulator (no key needed)
+uv run clinical-extraction simulate-jev --port 8765 &
+TYPESAFE_BASE_URL=http://127.0.0.1:8765 TYPESAFE_API_KEY=sim \
+  uv run clinical-extraction eval-decisions --provider typesafe
+uv run clinical-extraction simulate-review-load
+
+# Live, with a TypeSafe key (or a Vercel AI Gateway key plus
+# TYPESAFE_BASE_URL=https://ai-gateway.vercel.sh/typesafe and JEV_MODEL=typesafe-ai/jev)
 export TYPESAFE_API_KEY=...
 uv run clinical-extraction eval-decisions --provider typesafe --output evals/results/jev-decisions.json
 uv run clinical-extraction extract --file case.txt --verify typesafe

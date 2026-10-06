@@ -61,12 +61,16 @@
       }
     ],
     "examples": 20,
+    "feature_coverage_p05": 0.27,
+    "feature_coverage_p50": 0.54,
     "gate_criteria": {
+      "max_ood_review_rate": 0.05,
       "min_accuracy": 0.95,
       "min_examples": 200.0,
       "min_macro_f1": 0.9
     },
     "macro_f1": 0.5391,
+    "ood_review_rate": 0.05,
     "per_label": {
       "history": {
         "f1": 0.3333,
@@ -126,6 +130,7 @@
       ]
     },
     "max_iter": 5000,
+    "min_feature_coverage": 0.3,
     "seed": 13
   },
   "labels": [
@@ -139,7 +144,7 @@
   ],
   "model_sha256": "e4f2b4efc4f1fc15446e01abe2ae28d081e8b7a37d35cdace1a9e1e8d0296129",
   "model_type": "tfidf-logreg-v1",
-  "model_version": "finding_category-tfidf-logreg-v1-2d692bafef",
+  "model_version": "finding_category-tfidf-logreg-v1-2b4c2b7058",
   "task": "finding_category",
   "task_version": "finding-category-v1"
 }

@@ -315,17 +315,36 @@ Notes:
 - The CLI writes the extracted case to stdout for a human to review. It does not
   post to the API, which is why this identity holds no admin key — publishing
   extracted cases needs a review boundary first, and that is a production next step.
-- Verification with Jev (`--verify typesafe`, see `docs/DECISION_MODEL_MIGRATION.md`)
-  is off by default. Turning it on needs one more secret, mounted on this job only:
+- Verification with Jev (see `docs/DECISION_MODEL_MIGRATION.md`) is off by default.
+  A secret alone does not turn it on: the job also has to run a command that uses it.
+  The key goes in Secret Manager and is readable by the extraction identity only:
 
   ```bash
   printf '%s' "${TYPESAFE_API_KEY}" | gcloud secrets create eximion-typesafe-api-key --data-file=-
   gcloud secrets add-iam-policy-binding eximion-typesafe-api-key \
     --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
-  gcloud run jobs update eximion-extraction --region="${REGION}" \
-    --set-secrets="TYPESAFE_API_KEY=eximion-typesafe-api-key:latest"
   ```
+
+  Measuring the verifier is a job of its own, so the extraction eval keeps running
+  unchanged. Add `TYPESAFE_BASE_URL` to `--set-env-vars` when going through a gateway.
+
+  ```bash
+  gcloud run jobs deploy eximion-verifier-eval \
+    --image="${EXTRACTION_IMAGE}" \
+    --region="${REGION}" \
+    --service-account="${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --set-secrets="TYPESAFE_API_KEY=eximion-typesafe-api-key:latest" \
+    --set-env-vars="JEV_MODEL=jev-latest" \
+    --cpu=1 --memory=1Gi --max-retries=0 --task-timeout=15m \
+    --args="eval-decisions,--provider,typesafe"
+  gcloud run jobs execute eximion-verifier-eval --region="${REGION}" --wait
+  ```
+
+  Verifying a real extraction (`extract --file case.txt --verify typesafe`) needs the
+  clinical text delivered to the job, for example from a Cloud Storage bucket the
+  extraction identity can read. That input path is not designed yet: it is part of the
+  human review workflow listed under production next steps, not of this runbook.
 
   Synthetic data only, unless a privacy and security review confirms PHI use is
   permitted and the required contractual controls, including a BAA if applicable, are

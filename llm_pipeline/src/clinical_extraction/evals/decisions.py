@@ -19,7 +19,7 @@ finding_completeness, is experimental and reported on its own line.
 import copy
 import logging
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -232,6 +232,7 @@ class ScenarioResult:
     input_tokens: int
     shadow: list[tuple[str, str, str]]  # (query_id, shadow_label, primary_label)
     models: tuple[str, ...]
+    reasons: tuple[str, ...]  # "check:verdict", positions and labels only
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,9 +251,13 @@ class DecisionEvalSummary:
     false_accept_rate: float
     caught_by_expected_check_rate: float
     recall_by_defect: dict[str, float]
+    # Why correct cases went to review, by check and verdict. Review load is
+    # roughly 1 - (1 - e)^n for n questions per case at error rate e, so this is
+    # where to look first when the clean pass rate is low.
+    false_review_reasons: dict[str, int]
     held_out: dict[str, float]
     verification_unavailable: int
-    calls_per_case: float
+    external_calls_per_case: float
     latency_ms_p50: float
     latency_ms_p95: float
     input_tokens_per_case: float
@@ -285,6 +290,7 @@ def _run_scenario(verifier: CaseVerifier, scenario: Scenario) -> ScenarioResult:
         input_tokens=sum(u.input_tokens for u in report.usage),
         shadow=[(s.query_id, s.shadow_label, s.primary_label) for s in report.shadow],
         models=tuple(u.model for u in report.usage if u.provider != "local"),
+        reasons=tuple(f"{r.check}:{r.verdict}" for r in report.reasons),
     )
 
 
@@ -363,6 +369,9 @@ def run_decision_eval(
         caught_by_expected_check_rate=_rate(
             sum(r.caught_by_expected_check for r in planted), len(planted)
         ),
+        false_review_reasons=dict(
+            sorted(Counter(reason for r in clean for reason in r.reasons).items())
+        ),
         recall_by_defect={
             defect: _rate(sum(r.status is ReviewStatus.NEEDS_REVIEW for r in group), len(group))
             for defect, group in sorted(by_defect.items())
@@ -377,7 +386,9 @@ def run_decision_eval(
             ),
         },
         verification_unavailable=sum(r.unavailable for r in results),
-        calls_per_case=round(sum(r.calls for r in results) / len(results), 2) if results else 0.0,
+        external_calls_per_case=round(sum(r.calls for r in results) / len(results), 2)
+        if results
+        else 0.0,
         latency_ms_p50=percentile([r.latency_ms for r in results], 50),
         latency_ms_p95=percentile([r.latency_ms for r in results], 95),
         input_tokens_per_case=round(mean_tokens, 1),

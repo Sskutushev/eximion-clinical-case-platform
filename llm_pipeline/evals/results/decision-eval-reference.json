@@ -25,9 +25,9 @@
     "defect_detection_recall": 0.9444
   },
   "verification_unavailable": 0,
-  "calls_per_case": 1.0,
-  "latency_ms_p50": 2.44,
-  "latency_ms_p95": 3.83,
+  "external_calls_per_case": 1.0,
+  "latency_ms_p50": 2.18,
+  "latency_ms_p95": 3.64,
   "input_tokens_per_case": 0.0,
   "estimated_usd_per_1000_cases": 0.0,
   "shadow": {

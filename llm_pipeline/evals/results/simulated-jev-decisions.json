@@ -1,0 +1,100 @@
+{
+  "provider": "typesafe",
+  "requested_model": "jev-latest",
+  "resolved_models": [
+    "jev-sim"
+  ],
+  "scenarios": 70,
+  "clean_cases": 10,
+  "planted_defects": 60,
+  "clean_pass_rate": 0.1,
+  "false_review_rate": 0.9,
+  "defect_detection_recall": 0.9833,
+  "false_accept_rate": 0.0167,
+  "caught_by_expected_check_rate": 0.95,
+  "recall_by_defect": {
+    "missing_finding": 1.0,
+    "presentation_leak": 1.0,
+    "title_leak": 0.9,
+    "unsupported_finding": 1.0,
+    "wrong_category": 1.0,
+    "wrong_diagnosis_status": 1.0
+  },
+  "false_review_reasons": {
+    "diagnosis_leak:flagged": 3,
+    "diagnosis_status:flagged": 1,
+    "diagnosis_status:uncertain": 3,
+    "finding_category:flagged": 4,
+    "finding_category:uncertain": 3,
+    "finding_support:uncertain": 3
+  },
+  "held_out": {
+    "clean_pass_rate": 0.0,
+    "defect_detection_recall": 1.0
+  },
+  "verification_unavailable": 0,
+  "external_calls_per_case": 1.0,
+  "latency_ms_p50": 194.02,
+  "latency_ms_p95": 611.21,
+  "input_tokens_per_case": 2577.2,
+  "estimated_usd_per_1000_cases": 0.1082,
+  "shadow": {
+    "compared": 69,
+    "agreement_with_primary": 0.8261,
+    "accuracy_held_out": 0.6,
+    "held_out_examples": 20,
+    "accuracy_train_split": 1.0
+  },
+  "failures": [
+    {
+      "example_id": "case-001",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-002",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-003",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-004",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-005",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-006",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-007",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-008",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-009",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-010",
+      "defect": "title_leak",
+      "status": "accept"
+    }
+  ]
+}
