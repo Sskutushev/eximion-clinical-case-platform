@@ -183,7 +183,9 @@ def _run_eval_local(args: argparse.Namespace) -> int:
     loaded = load_model(args.models_dir / args.task)
     records = [r for r in finding_category_records(load_dataset(args.dataset)) if r.trusted]
     metrics = evaluate_classifier(
-        loaded.classifier, [r for r in records if r.split is Split.HELD_OUT]
+        loaded.classifier,
+        [r for r in records if r.split is Split.HELD_OUT],
+        min_feature_coverage=float(loaded.manifest.hyperparameters["min_feature_coverage"]),
     )
     payload = {
         "model_version": loaded.manifest.model_version,

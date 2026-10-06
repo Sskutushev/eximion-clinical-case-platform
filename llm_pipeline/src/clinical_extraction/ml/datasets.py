@@ -5,6 +5,7 @@ synthetic seed list. Reviewed production decisions join the same record format
 later; nothing downstream has to change when they do.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -14,13 +15,31 @@ from clinical_extraction.ml.records import DecisionRecord, LabelSource, Split
 
 SEED_DIR = Path(__file__).resolve().parents[3] / "training"
 
-# Held out by whole vignette. Together these three cover all seven categories,
-# so the held-out score is not blind to any label.
+# The ten original vignettes keep a hand-picked split: these three cover all
+# seven categories, so the held-out score is not blind to any label, and the
+# committed model was trained against exactly this split.
 HELD_OUT_CASES = frozenset({"case-002", "case-008", "case-009"})
+PINNED_TRAIN_CASES = frozenset(f"case-{n:03d}" for n in range(1, 11)) - HELD_OUT_CASES
+
+# Every other case group, such as human-reviewed production cases, is split by
+# a stable hash of its id: 20% held-out, 10% dev, 70% train. The held-out set
+# then grows with the data instead of staying at three vignettes, and a case
+# never changes sides when more data arrives.
+HELD_OUT_BUCKETS = frozenset({0, 1})
+DEV_BUCKETS = frozenset({2})
 
 
 def split_for(case_group_id: str) -> Split:
-    return Split.HELD_OUT if case_group_id in HELD_OUT_CASES else Split.TRAIN
+    if case_group_id in HELD_OUT_CASES:
+        return Split.HELD_OUT
+    if case_group_id in PINNED_TRAIN_CASES:
+        return Split.TRAIN
+    bucket = int(hashlib.sha256(case_group_id.encode("utf-8")).hexdigest(), 16) % 10
+    if bucket in HELD_OUT_BUCKETS:
+        return Split.HELD_OUT
+    if bucket in DEV_BUCKETS:
+        return Split.DEV
+    return Split.TRAIN
 
 
 def finding_category_records(

@@ -28,6 +28,8 @@ TRUSTED_SOURCES = frozenset(
 
 class Split(StrEnum):
     TRAIN = "train"
+    # For choosing thresholds; never trained on, never used for the final score.
+    DEV = "dev"
     HELD_OUT = "held_out"
 
 

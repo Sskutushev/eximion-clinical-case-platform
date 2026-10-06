@@ -252,7 +252,7 @@ class DecisionEvalSummary:
     recall_by_defect: dict[str, float]
     held_out: dict[str, float]
     verification_unavailable: int
-    calls_per_case: float
+    external_calls_per_case: float
     latency_ms_p50: float
     latency_ms_p95: float
     input_tokens_per_case: float
@@ -377,7 +377,9 @@ def run_decision_eval(
             ),
         },
         verification_unavailable=sum(r.unavailable for r in results),
-        calls_per_case=round(sum(r.calls for r in results) / len(results), 2) if results else 0.0,
+        external_calls_per_case=round(sum(r.calls for r in results) / len(results), 2)
+        if results
+        else 0.0,
         latency_ms_p50=percentile([r.latency_ms for r in results], 50),
         latency_ms_p95=percentile([r.latency_ms for r in results], 95),
         input_tokens_per_case=round(mean_tokens, 1),

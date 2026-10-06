@@ -4,6 +4,7 @@ Needs the optional `ml` dependency group (`uv sync --group ml`). Serving the
 result does not: the artifact is JSON and inference is plain Python.
 """
 
+import json
 import math
 from collections import Counter
 from collections.abc import Sequence
@@ -33,6 +34,9 @@ class TrainingConfig:
     # weights moderate rather than memorising the seed list.
     c: float = 10.0
     max_iter: int = 5000
+    # Out-of-distribution guard applied at serving time. Kept with the model so
+    # changing it changes the model version, not just the runtime behaviour.
+    min_feature_coverage: float = 0.3
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,14 +110,26 @@ def train_task(
     # Reload from JSON before scoring, so the metrics belong to the artifact
     # that ships, rounding included, and not to the in-memory sklearn model.
     classifier = TextClassifier.from_json(fit_classifier(train, config).to_json())
-    metrics = evaluate_classifier(classifier, held_out)
+    metrics = evaluate_classifier(
+        classifier, held_out, min_feature_coverage=config.min_feature_coverage
+    )
     dataset_hash = fingerprint(trusted)
+    hyperparameters = {
+        "features": config.features.to_dict(),
+        "c": config.c,
+        "max_iter": config.max_iter,
+        "class_weight": "balanced",
+        "seed": SEED,
+        "min_feature_coverage": config.min_feature_coverage,
+    }
+    # Data and settings both define the model: change either, get a new version.
+    version_hash = sha256_text(dataset_hash + json.dumps(hyperparameters, sort_keys=True))
 
     manifest = ModelManifest(
         task=task,
         task_version=TASKS[task].version,
         model_type=MODEL_FORMAT,
-        model_version=f"{task}-{MODEL_FORMAT}-{dataset_hash[:10]}",
+        model_version=f"{task}-{MODEL_FORMAT}-{version_hash[:10]}",
         model_sha256=sha256_text(classifier.to_json()),
         labels=list(classifier.labels),
         dataset={
@@ -122,13 +138,7 @@ def train_task(
             "held_out_examples": len(held_out),
             "label_sources": dict(Counter(str(r.label_source) for r in trusted)),
         },
-        hyperparameters={
-            "features": config.features.to_dict(),
-            "c": config.c,
-            "max_iter": config.max_iter,
-            "class_weight": "balanced",
-            "seed": SEED,
-        },
+        hyperparameters=hyperparameters,
         held_out={**metrics.to_dict(), "gate_criteria": gate.to_dict()},
         gate=gate.check(metrics),
     )

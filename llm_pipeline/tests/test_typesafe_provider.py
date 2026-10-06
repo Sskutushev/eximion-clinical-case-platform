@@ -49,7 +49,8 @@ GOOD_ANSWERS = {
 
 
 def _settings(**overrides: Any) -> DecisionSettings:
-    return DecisionSettings(typesafe_api_key="test-key", **overrides)
+    # Ignore any local .env: these tests must not depend on a developer's keys.
+    return DecisionSettings(_env_file=None, typesafe_api_key="test-key", **overrides)
 
 
 def _provider(
@@ -153,7 +154,7 @@ def test_a_connection_failure_is_typed() -> None:
 
 def test_no_key_means_no_provider() -> None:
     with pytest.raises(DecisionProviderError, match="TYPESAFE_API_KEY"):
-        TypeSafeDecisionProvider(DecisionSettings(typesafe_api_key=None))
+        TypeSafeDecisionProvider(DecisionSettings(_env_file=None, typesafe_api_key=None))
 
 
 def test_an_empty_question_list_makes_no_request() -> None:
@@ -193,3 +194,34 @@ def test_the_completeness_question_carries_the_extracted_list() -> None:
     assert question["type"] == "choice"
     assert question["instructions"]["extracted_findings"] == list(query.reference)
     assert set(question["criteria"]) == {"complete", "likely_incomplete"}
+
+
+def test_a_gateway_base_url_is_used_when_configured() -> None:
+    """Vercel AI Gateway serves the same System One endpoint under its own host."""
+    seen: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(str(request.url))
+        return _respond(GOOD_ANSWERS)
+
+    settings = _settings(
+        typesafe_base_url="https://gateway.example/typesafe", jev_model="typesafe-ai/jev"
+    )
+    client = TypeSafeClient(
+        api_key="test-key",
+        base_url=settings.typesafe_base_url,
+        transport=httpx2.MockTransport(handler),
+        retry=RetryPolicy(max_retries=0),
+    )
+    batch = TypeSafeDecisionProvider(settings, client=client).decide(SOURCE, QUERIES)
+
+    assert seen == ["https://gateway.example/typesafe/v1/systemone"]
+    assert batch.model == "jev-1.13.0"
+
+
+def test_the_provider_builds_its_client_from_settings() -> None:
+    provider = TypeSafeDecisionProvider(
+        _settings(typesafe_base_url="https://gateway.example/typesafe")
+    )
+
+    assert provider.model == "jev-latest"

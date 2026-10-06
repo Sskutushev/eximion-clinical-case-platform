@@ -11,7 +11,8 @@ from clinical_extraction.decisioning.tasks import DecisionTask
 from clinical_extraction.errors import UnsupportedDecisionTaskError
 from clinical_extraction.evals.dataset import load_dataset
 from clinical_extraction.evals.metrics import normalize
-from clinical_extraction.ml.datasets import HELD_OUT_CASES, finding_category_records
+from clinical_extraction.ml.datasets import HELD_OUT_CASES, finding_category_records, split_for
+from clinical_extraction.ml.evaluation import ClassifierMetrics, PromotionGate
 from clinical_extraction.ml.features import FeatureConfig, extract_features
 from clinical_extraction.ml.model import (
     MODELS_DIR,
@@ -209,3 +210,75 @@ def test_familiar_clinical_text_keeps_its_confidence() -> None:
     )
 
     assert local.decide("source", [query]).decisions[query.id].confidence > 0.0
+
+
+def test_new_case_groups_are_split_by_a_stable_hash() -> None:
+    ids = [f"reviewed-{n}" for n in range(1000)]
+    splits = [split_for(i) for i in ids]
+
+    assert splits == [split_for(i) for i in ids], "the same id always lands in the same split"
+    shares = {s: splits.count(s) / len(ids) for s in Split}
+    assert 0.15 < shares[Split.HELD_OUT] < 0.25
+    assert 0.05 < shares[Split.DEV] < 0.15
+    assert 0.6 < shares[Split.TRAIN] < 0.8
+
+
+def test_the_original_vignettes_keep_their_split() -> None:
+    assert {
+        c for c in (f"case-{n:03d}" for n in range(1, 11)) if split_for(c) is Split.HELD_OUT
+    } == (HELD_OUT_CASES)
+    assert all(
+        split_for(f"case-{n:03d}") is Split.TRAIN
+        for n in range(1, 11)
+        if f"case-{n:03d}" not in HELD_OUT_CASES
+    )
+
+
+def test_the_ood_threshold_is_part_of_the_model_version() -> None:
+    manifest = load_model(COMMITTED).manifest
+
+    assert manifest.hyperparameters["min_feature_coverage"] == 0.3
+    assert "ood_review_rate" in manifest.held_out
+    assert manifest.held_out["gate_criteria"]["max_ood_review_rate"] == 0.05
+
+
+def test_a_manifest_without_an_ood_threshold_is_refused(tmp_path: Path) -> None:
+    copy = tmp_path / "finding_category"
+    shutil.copytree(COMMITTED, copy)
+    manifest = json.loads((copy / "manifest.json").read_text(encoding="utf-8"))
+    del manifest["hyperparameters"]["min_feature_coverage"]
+    (copy / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="out-of-distribution"):
+        LocalDecisionProvider.from_directory(tmp_path)
+
+
+def test_the_gate_counts_examples_the_guard_would_send_to_review() -> None:
+    metrics = ClassifierMetrics(
+        examples=500,
+        accuracy=0.99,
+        macro_f1=0.98,
+        per_label={},
+        ood_review_rate=0.2,
+        feature_coverage_p05=0.1,
+        feature_coverage_p50=0.6,
+        errors=[],
+    )
+
+    result = PromotionGate().check(metrics)
+
+    assert not result.passed
+    assert any("out-of-distribution" in reason for reason in result.reasons)
+
+
+def test_changing_the_ood_threshold_changes_the_model_version() -> None:
+    pytest.importorskip("sklearn")
+    from clinical_extraction.ml.train import TrainingConfig, train_task  # noqa: PLC0415
+
+    default = train_task(DecisionTask.FINDING_CATEGORY, _records())
+    stricter = train_task(
+        DecisionTask.FINDING_CATEGORY, _records(), config=TrainingConfig(min_feature_coverage=0.6)
+    )
+
+    assert default.manifest.model_version != stricter.manifest.model_version
+    assert default.manifest.model_sha256 == stricter.manifest.model_sha256

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from clinical_extraction.evals.metrics import percentile
 from clinical_extraction.ml.model import GateResult, TextClassifier
 from clinical_extraction.ml.records import DecisionRecord
 
@@ -14,6 +15,12 @@ class ClassifierMetrics:
     accuracy: float
     macro_f1: float
     per_label: dict[str, dict[str, float]]
+    # How often the out-of-distribution guard would send a held-out example to
+    # review, and how familiar typical text is. A model that is accurate but
+    # unsure of a fifth of normal findings still sends a fifth of them to people.
+    ood_review_rate: float
+    feature_coverage_p05: float
+    feature_coverage_p50: float
     errors: list[dict[str, str]]
 
     def to_dict(self) -> dict[str, Any]:
@@ -21,10 +28,14 @@ class ClassifierMetrics:
 
 
 def evaluate_classifier(
-    classifier: TextClassifier, records: Sequence[DecisionRecord]
+    classifier: TextClassifier,
+    records: Sequence[DecisionRecord],
+    *,
+    min_feature_coverage: float,
 ) -> ClassifierMetrics:
     """Score the exported classifier, the exact thing that would run in production."""
     predictions = [(record, classifier.predict(record.text)) for record in records]
+    coverage = [classifier.coverage(record.text) for record in records]
     correct = sum(record.label == predicted for record, predicted in predictions)
 
     per_label: dict[str, dict[str, float]] = {}
@@ -51,6 +62,14 @@ def evaluate_classifier(
         accuracy=round(correct / len(records), 4) if records else 0.0,
         macro_f1=round(sum(f1_scores) / len(f1_scores), 4) if f1_scores else 0.0,
         per_label=per_label,
+        ood_review_rate=(
+            round(sum(c < min_feature_coverage for c in coverage) / len(coverage), 4)
+            if coverage
+            else 0.0
+        ),
+        # The low tail matters more than the top: it is where the guard fires.
+        feature_coverage_p05=percentile(coverage, 5),
+        feature_coverage_p50=percentile(coverage, 50),
         # Record ids and labels only, so the report can be shared without the text.
         errors=[
             {"record_id": r.record_id, "expected": r.label, "predicted": p}
@@ -72,6 +91,7 @@ class PromotionGate:
     min_examples: int = 200
     min_accuracy: float = 0.95
     min_macro_f1: float = 0.90
+    max_ood_review_rate: float = 0.05
 
     def check(self, metrics: ClassifierMetrics) -> GateResult:
         reasons = []
@@ -83,6 +103,11 @@ class PromotionGate:
             reasons.append(f"accuracy {metrics.accuracy} is below {self.min_accuracy}")
         if metrics.macro_f1 < self.min_macro_f1:
             reasons.append(f"macro F1 {metrics.macro_f1} is below {self.min_macro_f1}")
+        if metrics.ood_review_rate > self.max_ood_review_rate:
+            reasons.append(
+                f"out-of-distribution review rate {metrics.ood_review_rate} "
+                f"is above {self.max_ood_review_rate}"
+            )
         return GateResult(passed=not reasons, reasons=reasons)
 
     def to_dict(self) -> dict[str, float]:

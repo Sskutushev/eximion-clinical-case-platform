@@ -22,10 +22,6 @@ from clinical_extraction.ml.model import MANIFEST_FILE, MODELS_DIR, LoadedModel,
 
 logger = logging.getLogger(__name__)
 
-# Out-of-distribution guard: below this share of known features the model is
-# guessing. Experimental, like the policy thresholds; part of the promotion check.
-MIN_FEATURE_COVERAGE = 0.3
-
 
 class LocalDecisionProvider:
     def __init__(self, models: Mapping[DecisionTask, LoadedModel]) -> None:
@@ -35,6 +31,8 @@ class LocalDecisionProvider:
                     f"{task}: model was trained for {loaded.manifest.task_version}, "
                     f"the task is now {TASKS[task].version}; retrain it"
                 )
+            if "min_feature_coverage" not in loaded.manifest.hyperparameters:
+                raise ValueError(f"{task}: manifest has no out-of-distribution threshold")
         self._models = dict(models)
 
     @classmethod
@@ -74,7 +72,9 @@ class LocalDecisionProvider:
             # Text unlike anything in training still gets a softmax answer, built
             # mostly from the intercept. It is not knowledge, so it carries no
             # confidence and the policy sends it to review.
-            known = loaded.classifier.coverage(query.subject) >= MIN_FEATURE_COVERAGE
+            # The threshold comes from the manifest, so it is versioned with the model.
+            threshold = float(loaded.manifest.hyperparameters["min_feature_coverage"])
+            known = loaded.classifier.coverage(query.subject) >= threshold
             decisions[query.id] = Decision(
                 query_id=query.id,
                 task=query.task,

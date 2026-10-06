@@ -75,6 +75,7 @@ class TypeSafeDecisionProvider:
             return TypeSafeClient(
                 api_key=settings.typesafe_api_key.get_secret_value(),
                 model=settings.jev_model,
+                base_url=settings.typesafe_base_url,
                 timeout=settings.typesafe_timeout_seconds,
                 retry=RetryPolicy(max_retries=settings.typesafe_max_retries),
             )
