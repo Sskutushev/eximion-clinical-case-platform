@@ -156,7 +156,7 @@ def _run_eval_decisions(args: argparse.Namespace) -> int:
         _build_verifier(primary, shadow_local=not args.no_shadow),
         examples,
         provider=args.provider,
-        model=primary.model,
+        requested_model=primary.model,
         usd_per_m_input=usd_per_m_input,
         delay_seconds=args.delay,
     )

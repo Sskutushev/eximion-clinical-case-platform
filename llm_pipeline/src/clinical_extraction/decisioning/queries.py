@@ -57,4 +57,16 @@ def build_queries(case: ClinicalCaseExtraction) -> list[DecisionQuery]:
                 reference=established,
             )
         )
+
+    # One question about the list as a whole: support checks what was
+    # extracted, this checks what was left out.
+    queries.append(
+        DecisionQuery(
+            id="findings.completeness",
+            task=DecisionTask.FINDING_COMPLETENESS,
+            target="findings",
+            subject="",
+            reference=tuple(f.value for f in case.findings),
+        )
+    )
     return queries

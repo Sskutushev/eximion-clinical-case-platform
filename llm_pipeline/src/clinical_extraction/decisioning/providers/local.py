@@ -22,6 +22,10 @@ from clinical_extraction.ml.model import MANIFEST_FILE, MODELS_DIR, LoadedModel,
 
 logger = logging.getLogger(__name__)
 
+# Out-of-distribution guard: below this share of known features the model is
+# guessing. Experimental, like the policy thresholds; part of the promotion check.
+MIN_FEATURE_COVERAGE = 0.3
+
 
 class LocalDecisionProvider:
     def __init__(self, models: Mapping[DecisionTask, LoadedModel]) -> None:
@@ -67,12 +71,16 @@ class LocalDecisionProvider:
             if loaded is None:
                 raise UnsupportedDecisionTaskError(f"no local model for {query.task}")
             probabilities = loaded.classifier.predict_proba(query.subject)
+            # Text unlike anything in training still gets a softmax answer, built
+            # mostly from the intercept. It is not knowledge, so it carries no
+            # confidence and the policy sends it to review.
+            known = loaded.classifier.coverage(query.subject) >= MIN_FEATURE_COVERAGE
             decisions[query.id] = Decision(
                 query_id=query.id,
                 task=query.task,
                 label=max(probabilities, key=probabilities.__getitem__),
                 probabilities={k: round(v, 6) for k, v in probabilities.items()},
-                confidence=choice_confidence(probabilities),
+                confidence=choice_confidence(probabilities) if known else 0.0,
                 provider=self.name,
                 model=loaded.manifest.model_version,
                 task_version=loaded.manifest.task_version,

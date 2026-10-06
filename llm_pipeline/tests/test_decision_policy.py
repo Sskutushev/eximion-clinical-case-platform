@@ -18,6 +18,7 @@ SOURCE = "A 24-year-old man with migratory abdominal pain. Diagnosis: acute appe
 AGREEING = {
     DecisionTask.FINDING_SUPPORT: "supported",
     DecisionTask.DIAGNOSIS_LEAK: NO,
+    DecisionTask.FINDING_COMPLETENESS: "complete",
 }
 STATUS = {"Acute appendicitis": "established", "Appendicitis": "established"}
 
@@ -66,8 +67,8 @@ def test_a_candidate_the_verifier_agrees_with_is_accepted(case: ClinicalCaseExtr
 def test_every_check_is_asked_in_one_call(case: ClinicalCaseExtraction) -> None:
     queries = build_queries(case)
 
-    # 2 findings x (support, category) + 3 answers + title + presentation
-    assert len(queries) == 2 * 2 + 3 + 2
+    # 2 findings x (support, category) + 3 answers + title + presentation + completeness
+    assert len(queries) == 2 * 2 + 3 + 2 + 1
     assert len({q.id for q in queries}) == len(queries)
 
 
@@ -82,6 +83,9 @@ def test_every_check_is_asked_in_one_call(case: ClinicalCaseExtraction) -> None:
         ("answers.1.status", ("not_stated", 0.95), Verdict.FLAGGED),
         ("title.leak", (YES, 0.9), Verdict.FLAGGED),
         ("presentation.leak", (YES, 0.6), Verdict.FLAGGED),
+        ("findings.completeness", ("likely_incomplete", 0.95), Verdict.FLAGGED),
+        # p(yes) = 0.4: not a leak by the threshold, but not a confident "no" either.
+        ("title.leak", (NO, 0.6), Verdict.UNCERTAIN),
         # Agreeing, but not sure enough to act on.
         ("findings.0.category", ("symptom", 0.3), Verdict.UNCERTAIN),
         ("findings.0.support", ("supported", 0.3), Verdict.UNCERTAIN),
@@ -111,9 +115,9 @@ def test_a_differential_is_not_flagged_for_being_a_differential(
     assert report.status is ReviewStatus.ACCEPT
 
 
-def test_a_weak_leak_signal_is_not_flagged(case: ClinicalCaseExtraction) -> None:
-    # p(yes) = 0.4, below the 0.5 default
-    report = _verify(case, {"title.leak": (NO, 0.6)})
+def test_a_confident_no_leak_passes(case: ClinicalCaseExtraction) -> None:
+    # p(yes) = 0.1
+    report = _verify(case, {"title.leak": (NO, 0.9)})
 
     assert report.status is ReviewStatus.ACCEPT
 

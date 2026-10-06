@@ -12,7 +12,7 @@ The pipeline and the policy do not change when a route does.
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from clinical_extraction.decisioning.providers.base import DecisionProvider
 from clinical_extraction.decisioning.providers.local import LocalDecisionProvider
@@ -54,6 +54,8 @@ class DecisionRouter:
         allow_ungated_local: bool = False,
     ) -> None:
         for task, route in routes.items():
+            if route.shadow == route.primary:
+                raise ValueError(f"{task}: a provider cannot shadow itself")
             for role, name in (("primary", route.primary), ("shadow", route.shadow)):
                 if name is None:
                     continue
@@ -78,63 +80,76 @@ class DecisionRouter:
         return self._routes
 
     def decide(self, source_text: str, queries: Sequence[DecisionQuery]) -> RoutedDecisions:
-        """Ask every primary provider once, then the shadows.
+        """Ask each provider once, whatever mix of primary and shadow work it has.
+
+        Mid-migration one provider can be primary for some tasks and shadow for
+        another (Jev primary for support, shadow for category). Its questions
+        still go in one request, then the answers are split by role.
 
         A primary failure propagates: the caller must not treat an unverified
         candidate as verified. A shadow failure is logged and counted, and never
         changes the outcome.
         """
+        plan = self._plan(queries)
+        # Providers with primary work first, so a primary failure stops early.
+        order = sorted(plan, key=lambda name: not plan[name].primary)
+
         batches: list[DecisionBatch] = []
         primary: dict[str, Decision] = {}
-        for name, group in self._group(queries, shadow=False).items():
-            batch = self._providers[name].decide(source_text, group)
-            missing = [q.id for q in group if q.id not in batch.decisions]
-            if missing:
-                raise DecisionProviderError(f"{name} left {len(missing)} question(s) unanswered")
-            batches.append(batch)
-            primary.update(batch.decisions)
-
-        shadow: list[ShadowComparison] = []
+        shadow_answers: list[tuple[DecisionQuery, Decision | None]] = []
         shadow_errors = 0
-        for name, group in self._group(queries, shadow=True).items():
+        for name in order:
+            work = plan[name]
             try:
-                batch = self._providers[name].decide(source_text, group)
+                batch = self._providers[name].decide(source_text, work.primary + work.shadow)
             except DecisionError as exc:
-                shadow_errors += len(group)
+                if work.primary:
+                    raise
+                shadow_errors += len(work.shadow)
                 logger.warning(
                     "shadow provider failed",
                     extra={"provider": name, "error_type": type(exc).__name__},
                 )
                 continue
+            missing = [q.id for q in work.primary if q.id not in batch.decisions]
+            if missing:
+                raise DecisionProviderError(f"{name} left {len(missing)} question(s) unanswered")
             batches.append(batch)
-            for query in group:
-                decision = batch.decisions.get(query.id)
-                if decision is None:
-                    shadow_errors += 1
-                    continue
-                shadow.append(
-                    ShadowComparison(
-                        query_id=query.id,
-                        task=query.task,
-                        primary_label=primary[query.id].label,
-                        shadow_label=decision.label,
-                        shadow_confidence=decision.confidence,
-                        shadow_model=decision.model,
-                    )
+            primary.update({q.id: batch.decisions[q.id] for q in work.primary})
+            shadow_answers.extend((q, batch.decisions.get(q.id)) for q in work.shadow)
+
+        shadow: list[ShadowComparison] = []
+        for query, decision in shadow_answers:
+            if decision is None:
+                shadow_errors += 1
+                continue
+            shadow.append(
+                ShadowComparison(
+                    query_id=query.id,
+                    task=query.task,
+                    primary_label=primary[query.id].label,
+                    shadow_label=decision.label,
+                    shadow_confidence=decision.confidence,
+                    shadow_model=decision.model,
                 )
+            )
         return RoutedDecisions(
             primary=primary, batches=batches, shadow=shadow, shadow_errors=shadow_errors
         )
 
-    def _group(
-        self, queries: Sequence[DecisionQuery], *, shadow: bool
-    ) -> dict[str, list[DecisionQuery]]:
-        groups: dict[str, list[DecisionQuery]] = defaultdict(list)
+    def _plan(self, queries: Sequence[DecisionQuery]) -> dict[str, "_ProviderWork"]:
+        plan: dict[str, _ProviderWork] = defaultdict(_ProviderWork)
         for query in queries:
             route = self._routes.get(query.task)
             if route is None:
                 raise ValueError(f"no route for {query.task}")
-            name = route.shadow if shadow else route.primary
-            if name is not None:
-                groups[name].append(query)
-        return groups
+            plan[route.primary].primary.append(query)
+            if route.shadow is not None:
+                plan[route.shadow].shadow.append(query)
+        return plan
+
+
+@dataclass(slots=True)
+class _ProviderWork:
+    primary: list[DecisionQuery] = field(default_factory=list)
+    shadow: list[DecisionQuery] = field(default_factory=list)

@@ -19,6 +19,7 @@ class DecisionTask(StrEnum):
     FINDING_CATEGORY = "finding_category"
     DIAGNOSIS_STATUS = "diagnosis_status"
     DIAGNOSIS_LEAK = "diagnosis_leak"
+    FINDING_COMPLETENESS = "finding_completeness"
 
 
 class TaskKind(StrEnum):
@@ -102,6 +103,26 @@ TASKS: Mapping[DecisionTask, TaskSpec] = MappingProxyType(
                 {
                     YES: "The text names or plainly reveals a listed diagnosis.",
                     NO: "The text describes the problem without revealing the diagnosis.",
+                }
+            ),
+        ),
+        # Experimental. The live Gemini run loses more on recall than on
+        # precision, and finding_support only sees what was extracted, so this
+        # asks the other way round: is anything clinically relevant missing?
+        DecisionTask.FINDING_COMPLETENESS: TaskSpec(
+            task=DecisionTask.FINDING_COMPLETENESS,
+            kind=TaskKind.CHOICE,
+            version="finding-completeness-v1",
+            question=(
+                "Does the source clinical text state a clinically relevant finding "
+                "(history, symptom, vital sign, examination sign, laboratory or imaging "
+                "result) that is missing from the extracted findings? Rewording or "
+                "combining findings does not count as missing."
+            ),
+            labels=_frozen(
+                {
+                    "complete": "Every relevant finding in the source is covered.",
+                    "likely_incomplete": "At least one relevant finding is missing.",
                 }
             ),
         ),

@@ -7,10 +7,13 @@ from typing import Any
 
 import httpx2
 import pytest
-from typesafe_sdk import RetryPolicy, TypeSafeClient
+from typesafe_sdk import Choice, RetryPolicy, TypeSafeClient
 
 from clinical_extraction.config import DecisionSettings
-from clinical_extraction.decisioning.providers.typesafe import TypeSafeDecisionProvider
+from clinical_extraction.decisioning.providers.typesafe import (
+    TypeSafeDecisionProvider,
+    build_question,
+)
 from clinical_extraction.decisioning.schema import DecisionQuery
 from clinical_extraction.decisioning.tasks import NO, YES, DecisionTask
 from clinical_extraction.errors import DecisionProviderError
@@ -172,3 +175,21 @@ def test_clinical_text_stays_out_of_the_logs(caplog: pytest.LogCaptureFixture) -
 
     assert SOURCE not in caplog.text
     assert "Heart rate 118/min" not in caplog.text
+
+
+def test_the_completeness_question_carries_the_extracted_list() -> None:
+    query = DecisionQuery(
+        id="findings.completeness",
+        task=DecisionTask.FINDING_COMPLETENESS,
+        target="findings",
+        subject="",
+        reference=("Heart rate 118/min", "Oxygen saturation 91% on room air"),
+    )
+
+    built = build_question(query)
+    assert isinstance(built, Choice)
+    question = built.model_dump()
+
+    assert question["type"] == "choice"
+    assert question["instructions"]["extracted_findings"] == list(query.reference)
+    assert set(question["criteria"]) == {"complete", "likely_incomplete"}

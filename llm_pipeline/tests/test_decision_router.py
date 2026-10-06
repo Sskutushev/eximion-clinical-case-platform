@@ -23,6 +23,7 @@ def _answer(source_text: str, query: DecisionQuery) -> tuple[str, float]:
         DecisionTask.FINDING_CATEGORY: "symptom" if query.index == 0 else "laboratory",
         DecisionTask.DIAGNOSIS_STATUS: "differential" if query.index == 2 else "established",
         DecisionTask.DIAGNOSIS_LEAK: NO,
+        DecisionTask.FINDING_COMPLETENESS: "complete",
     }
     return answers[query.task], 0.95
 
@@ -121,3 +122,37 @@ def test_routes_are_checked_when_the_router_is_built() -> None:
         DecisionRouter({"fake": fake}, default_routes(primary="missing", shadow_local=False))
     with pytest.raises(ValueError, match="cannot answer"):
         DecisionRouter({"narrow": narrow}, default_routes(primary="narrow", shadow_local=False))
+
+
+def test_one_provider_in_two_roles_is_still_called_once(case: ClinicalCaseExtraction) -> None:
+    """Mid-migration: local answers categories, Jev shadows them and answers the rest."""
+    jev = FakeDecisionProvider(_answer, name="jev")
+    local = FakeDecisionProvider(_answer, name="mine", tasks={DecisionTask.FINDING_CATEGORY})
+    routes = default_routes(primary="jev", shadow_local=False)
+    routes[DecisionTask.FINDING_CATEGORY] = Route(primary="mine", shadow="jev")
+
+    routed = DecisionRouter({"jev": jev, "mine": local}, routes).decide(SOURCE, build_queries(case))
+
+    assert (jev.calls, local.calls) == (1, 1)
+    assert len(routed.shadow) == len(case.findings)
+    assert {d.provider for q, d in routed.primary.items() if q.endswith(".category")} == {"mine"}
+
+
+def test_a_failure_in_a_provider_with_primary_work_is_not_hidden(
+    case: ClinicalCaseExtraction,
+) -> None:
+    jev = FakeDecisionProvider(_answer, name="jev", fail=True)
+    local = FakeDecisionProvider(_answer, name="mine", tasks={DecisionTask.FINDING_CATEGORY})
+    routes = default_routes(primary="jev", shadow_local=False)
+    routes[DecisionTask.FINDING_CATEGORY] = Route(primary="mine", shadow="jev")
+
+    with pytest.raises(DecisionProviderError):
+        DecisionRouter({"jev": jev, "mine": local}, routes).decide(SOURCE, build_queries(case))
+
+
+def test_a_provider_cannot_shadow_itself() -> None:
+    fake = FakeDecisionProvider(_answer)
+    routes = {DecisionTask.FINDING_CATEGORY: Route(primary="fake", shadow="fake")}
+
+    with pytest.raises(ValueError, match="shadow itself"):
+        DecisionRouter({"fake": fake}, routes)
