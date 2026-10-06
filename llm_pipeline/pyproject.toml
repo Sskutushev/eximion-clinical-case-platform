@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-settings>=2.10",
     "google-genai>=2.26",
     "tenacity>=9.1",
+    "typesafe-sdk>=0.7.2",
 ]
 
 [project.scripts]
@@ -28,6 +29,10 @@ dev = [
     "ruff>=0.13",
     "jsonschema>=4.25",
     "types-jsonschema>=4.26.0.20260518",
+]
+ml = [
+    "numpy>=2.2",
+    "scikit-learn>=1.7",
 ]
 
 [tool.ruff]
@@ -55,6 +60,11 @@ strict = true
 plugins = ["pydantic.mypy"]
 warn_unreachable = true
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# scikit-learn ships no type hints; it is used only by the optional trainer.
+module = ["sklearn.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
