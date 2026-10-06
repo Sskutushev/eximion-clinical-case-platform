@@ -1,5 +1,6 @@
 import logging
 import time
+from dataclasses import replace
 
 from clinical_extraction.errors import ContentBlockedError, ExtractionError, ProviderError
 from clinical_extraction.evals.dataset import EvalExample
@@ -15,6 +16,10 @@ from clinical_extraction.prompt import PROMPT_VERSION
 from clinical_extraction.providers.base import ExtractionProvider
 
 logger = logging.getLogger(__name__)
+
+
+def _elapsed_ms(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000, 1)
 
 
 def run_eval(
@@ -47,6 +52,7 @@ def run_eval(
     for index, example in enumerate(examples):
         if delay_seconds > 0 and index > 0:
             time.sleep(delay_seconds)
+        started = time.perf_counter()
         try:
             result = extractor.extract(example.raw_text)
         except (ExtractionError, ValueError) as exc:
@@ -65,10 +71,19 @@ def run_eval(
                     example_id=example.id,
                     status=status,
                     error=f"{type(exc).__name__}: {exc}",
+                    latency_ms=_elapsed_ms(started),
                 )
             )
             continue
-        reports.append(evaluate_case(example.expected, result.case, example.id))
+        usage = result.usage or {}
+        reports.append(
+            replace(
+                evaluate_case(example.expected, result.case, example.id),
+                latency_ms=_elapsed_ms(started),
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+            )
+        )
 
     return summarize(
         reports, provider=provider_name, model=provider.model, prompt_version=PROMPT_VERSION

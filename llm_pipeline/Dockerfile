@@ -38,6 +38,8 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv ./.venv
 COPY --chown=app:app src ./src
 COPY --chown=app:app evals ./evals
+# Trained local models: plain JSON, served without numpy or scikit-learn.
+COPY --chown=app:app models ./models
 
 USER app
 

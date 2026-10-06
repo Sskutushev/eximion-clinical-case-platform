@@ -1,6 +1,7 @@
 #  Entry points for local development and CI. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help up down migrate seed openapi types test lint typecheck check smoke eval eval-gemini clean
+.PHONY: help up down db migrate seed openapi types test lint typecheck check smoke eval eval-gemini \
+	eval-decisions eval-jev train-local clean
 
 BACKEND := backend
 FRONTEND := frontend
@@ -53,10 +54,20 @@ eval-gemini: ## Run the extraction eval against Vertex AI / Gemini (needs creden
 	cd $(PIPELINE) && uv run clinical-extraction eval --provider gemini \
 		--output evals/results/gemini-eval.json
 
+eval-decisions: ## Run the verifier eval offline (reference verifier, local model in shadow)
+	cd $(PIPELINE) && uv run clinical-extraction eval-decisions
+
+eval-jev: ## Run the verifier eval against Jev (needs TYPESAFE_API_KEY)
+	cd $(PIPELINE) && uv run clinical-extraction eval-decisions --provider typesafe \
+		--output evals/results/jev-decisions.json
+
+train-local: ## Retrain the local finding-category model (needs the ml dependency group)
+	cd $(PIPELINE) && uv sync --group ml && uv run clinical-extraction train-local --task finding_category
+
 smoke: ## End-to-end smoke test against a running stack
 	bash scripts/smoke.sh
 
-check: lint typecheck test eval ## Everything CI runs, except Docker
+check: lint typecheck test eval eval-decisions ## Everything CI runs, except Docker
 
 clean: ## Remove local build and cache artifacts
 	cd $(FRONTEND) && rm -rf .next node_modules/.cache

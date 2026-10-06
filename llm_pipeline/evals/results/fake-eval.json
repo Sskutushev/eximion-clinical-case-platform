@@ -16,6 +16,10 @@
   "findings_f1_exact_text": 0.9899,
   "finding_category_accuracy": 1.0,
   "exact_case_match_rate": 0.6,
+  "latency_ms_p50": 0.8,
+  "latency_ms_p95": 1.5,
+  "input_tokens": 0,
+  "output_tokens": 0,
   "failures": [
     {
       "example_id": "case-003",
