@@ -283,7 +283,7 @@ Everything below was run locally on this machine, and the numbers are the real o
 | Backend tests (real PostgreSQL) | `uv run pytest --cov` | **53 passed**, coverage **98.31%** (gate 90%) |
 | Migration integrity | `alembic upgrade head`, `alembic check`, up/down/up in a test | no drift |
 | Pipeline lint / types | `ruff`, `mypy --strict` | clean |
-| Pipeline tests | `uv run pytest --cov` | **120 passed**, coverage **95.07%** (gate 85%) |
+| Pipeline tests | `uv run pytest --cov` | **128 passed**, coverage **95.47%** (gate 85%) |
 | Offline eval | `clinical-extraction eval --provider fake` | gate passed; 4 injected defects detected |
 | Offline decision eval | `clinical-extraction eval-decisions` | gate passed; 2 injected verifier misjudgments detected |
 | Live extraction eval | `clinical-extraction eval --provider gemini --delay 7` | `extract-v2`, 10/10 scored |

@@ -184,6 +184,12 @@ what a person should review next.
 The split is made by vignette (`case_group_id`). Every record from one case sits on
 one side only, so variants of the same case cannot leak from training into the test.
 
+The ten original vignettes keep a hand-picked split (three held out, covering all
+seven categories). Every new case group, such as a human-reviewed production case, is
+assigned by a stable hash of its id: 20% held-out, 10% dev for choosing thresholds,
+70% train. So the held-out set grows with the data toward the gate's 200 examples,
+and a case never changes sides when more data arrives.
+
 ### The first model: finding category
 
 Chosen first because it has a closed label set, existing labels, a clear metric and
@@ -200,7 +206,9 @@ no generation involved.
 - Inference is plain Python. The runtime image has no numpy or scikit-learn.
 - Out-of-distribution guard: if less than 30% of a text's features were seen in
   training, the softmax answer is mostly intercept, so its confidence is set to 0 and
-  the policy sends it to review.
+  the policy sends it to review. The threshold lives in the manifest, so changing it
+  changes the model version. Held-out metrics report how often the guard fires
+  (`ood_review_rate`) and how familiar typical text is (feature coverage p05 / p50).
 - A test retrains the model and checks it matches the committed one. If the data
   changes and nobody retrains, CI fails.
 
@@ -214,6 +222,7 @@ in code:
 | held-out examples | at least 200 |
 | held-out accuracy | at least 0.95 |
 | held-out macro F1 | at least 0.90 |
+| held-out examples the out-of-distribution guard sends to review | at most 5% |
 
 Passing is necessary, not sufficient. After that the model still runs in shadow
 next to Jev on real traffic, and only a clean comparison there moves the task.
@@ -312,6 +321,7 @@ of 3 held-out vignettes it never saw:
 | held-out macro F1 | 0.54 |
 | accuracy on its own training vignettes | 1.0 |
 | agreement with the primary verifier (shadow) | 0.88 over 69 findings |
+| held-out examples below the OOD threshold | 5% (1 / 20) |
 | promotion gate | **failed**: 20 examples < 200, accuracy < 0.95, F1 < 0.90 |
 
 So it stays in shadow, which is the point of the gate. The gap between 1.0 on
@@ -384,7 +394,8 @@ uv run clinical-extraction eval-local --task finding_category
 uv sync --group ml
 uv run clinical-extraction train-local --task finding_category
 
-# Live, with a TypeSafe key
+# Live, with a TypeSafe key (or a Vercel AI Gateway key plus
+# TYPESAFE_BASE_URL=https://ai-gateway.vercel.sh/typesafe and JEV_MODEL=typesafe-ai/jev)
 export TYPESAFE_API_KEY=...
 uv run clinical-extraction eval-decisions --provider typesafe --output evals/results/jev-decisions.json
 uv run clinical-extraction extract --file case.txt --verify typesafe
