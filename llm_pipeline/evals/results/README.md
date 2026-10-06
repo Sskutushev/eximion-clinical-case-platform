@@ -1,22 +1,48 @@
 # Evaluation results
 
-`gemini-2.5-flash-extract-v1.json` is a real run against the Gemini API, not a
-simulation. It is committed as produced, including its failures.
+Every file here is committed as produced, including its failures.
 
-## Provenance: which prompt this measures
+| File | What it is |
+|---|---|
+| `gemini-2.5-flash-extract-v2.json` | live Gemini run of the current prompt, all 10 cases (2026-10-06) |
+| `gemini-2.5-flash-extract-v1.json` | earlier live run of the previous prompt, 2 of 10 cases (free-tier quota) |
+| `fake-eval.json` | offline run, fake provider with four planted defects |
+| `decision-eval-reference.json` | offline verifier eval, see `docs/DECISION_MODEL_MIGRATION.md` |
 
-The file name carries the prompt version on purpose. The run was made with
+## The current prompt, live
+
+`extract-v2` on `gemini-2.5-flash`, ten cases, `--delay 7`, no provider errors:
+
+| Metric | Value |
+|---|---|
+| schema valid | 1.0 (10/10) |
+| age / sex | 1.0 / 1.0 |
+| answer key | 0.9 (case-004 differs) |
+| findings F1, token overlap | 0.51 (precision 0.44, recall 0.61) |
+| findings F1, exact text | 0.17 |
+| category accuracy on matched findings | 0.97 |
+| latency p50 / p95 | 4.0 s / 7.7 s |
+| tokens, all ten cases | 4,314 in / 3,024 out |
+
+Structure, demographics and the answer key are solid. Findings are where the model
+and the ground truth part ways: the model often splits or merges facts differently
+from the hand-written list, so the overlap metric undercounts real matches and the
+exact-text metric undercounts them much more. That is a measurement limit as much as
+a model one, and it is why both numbers are shown.
+
+The output token count excludes Gemini 2.5's thinking tokens, which are billed as
+output. Cost estimates built on it are a lower bound.
+
+## The earlier run: which prompt it measures
+
+The file name carries the prompt version on purpose. The v1 run was made with
 `extract-v1`. The current prompt is `extract-v2` (see `PROMPT_VERSION` in
 `prompt.py`), which changed the extraction schema, not just the wording: the
 model no longer produces `score_weight` for diagnoses. Weights are now assigned
 by a deterministic policy after extraction, so the model only reports which
 diagnosis the source text establishes.
 
-`extract-v2` has **not** been run live, for the same quota reason described
-below. So the honest statement is: the previous prompt was partially verified
-against the live model; the current one is covered by the offline eval and the
-stubbed-SDK tests, and awaits a paid tier or a Vertex project for its own live
-run. The v1 numbers are not presented as a measurement of v2.
+The v1 numbers are not presented as a measurement of v2; v2 has its own run above.
 
 ## Reproducing it
 
@@ -68,10 +94,10 @@ would understate the model. A safety block is kept apart from both: it is the
 model declining, which is neither an outage nor a malformed answer, and it is
 worth seeing on its own because clinical text can trip a safety filter.
 
-## What this run shows, and what it does not
+## What the v1 run shows, and what it does not
 
-The committed run was made on a **free Gemini tier**, whose quota is exhausted
-partway through ten cases. So it is a genuine but partial measurement: the cases
+The v1 run was made on a **free Gemini tier** without `--delay`, so the
+requests-per-minute limit ran out partway through ten cases. So it is a genuine but partial measurement: the cases
 that completed are measured honestly, and the rest are recorded as quota errors
 rather than silently dropped or retried into looking better.
 
@@ -82,5 +108,4 @@ overlap-based one. That gap is a property of free-text findings, not of the
 model — and it is the reason both numbers are reported rather than only the
 flattering one.
 
-A full ten-case measurement needs a paid tier or a Vertex AI project. The
-command is above and unchanged.
+The v2 run above used the same free tier with `--delay 7` and completed all ten.
