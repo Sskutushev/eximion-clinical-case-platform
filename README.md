@@ -48,7 +48,7 @@ the smoke test on the rendered HTML.
 ```
 backend/        FastAPI, SQLAlchemy 2, Alembic, pytest        (Python 3.12)
 frontend/       Next.js App Router, TypeScript strict, vitest (Node 22)
-llm_pipeline/   Gemini extraction + eval harness              (Python 3.12)
+llm_pipeline/   Gemini extraction, decision layer, local models, evals (Python 3.12)
 contracts/      openapi.json — the shared contract, drift-checked in CI
 infra/          DEPLOYMENT.md — Cloud Run + Cloud SQL runbook
 scripts/        smoke.sh — end-to-end check of the real stack
@@ -300,20 +300,41 @@ cd llm_pipeline && uv run clinical-extraction eval --provider gemini --delay 7
 Or through Vertex AI, which is the production path and stores no key at all:
 set `GOOGLE_CLOUD_PROJECT` and run `gcloud auth application-default login`.
 
-`llm_pipeline/evals/results/gemini-2.5-flash-extract-v1.json` is a real run, committed
-as produced. It was made on a free tier whose quota runs out partway through, so it is a
-genuine but partial measurement — the completed cases are scored, the rest are recorded
-as quota errors rather than retried into looking better. It measures the previous prompt,
-`extract-v1`; the current `extract-v2` (the model no longer emits score weights) has not
-been run live for the same quota reason. See
-[`evals/results/README.md`](llm_pipeline/evals/results/README.md) for how to read it.
+`llm_pipeline/evals/results/gemini-2.5-flash-extract-v2.json` is a live run of the
+current prompt on all ten cases, committed as produced: schema 10/10, age and sex 1.0,
+answer key 0.9, findings F1 0.51 (token overlap), category accuracy 0.97, latency p50
+4.0 s. See [`evals/results/README.md`](llm_pipeline/evals/results/README.md) for how to
+read it, and for the earlier partial run of `extract-v1`.
+
+### Decision layer: Jev now, our own models next
+
+An optional second step checks each extraction with bounded questions instead of a
+second generative call: is this finding in the source, which category is it, is this
+diagnosis established, does the title give it away.
+
+- **Jev (TypeSafe)** answers today: fixed labels with probabilities, one request per case.
+- **Code decides.** Disagreement or low confidence sends the case to review. Nothing is
+  silently corrected, and a verifier outage never means "accepted".
+- **Our own model runs in shadow** from day one: a small TF-IDF + logistic regression
+  classifier for finding category, served as plain JSON without ML dependencies. The
+  router will not let it answer for real until it passes a held-out gate.
+- **Scoring is untouched.** Participants are still scored by deterministic code.
+
+This stage adds checks, not savings: the savings come later, when a cheap extractor plus
+verification sends only flagged cases to Gemini. Design, measurements and the migration
+plan: [`docs/DECISION_MODEL_MIGRATION.md`](docs/DECISION_MODEL_MIGRATION.md).
+
+```bash
+uv run clinical-extraction eval-decisions                     # offline verifier eval
+uv run clinical-extraction extract --file case.txt --verify typesafe
+```
 
 ## Tests and checks
 
 | Suite | What it covers |
 |---|---|
 | `backend` — 53 tests, 98% | real PostgreSQL via Alembic; create/read/score; answer-key non-leakage on the raw body; normalization; submission persistence; transaction rollback; migration up/down/up; drift check; production fail-closed config; 503 readiness; no internals in errors |
-| `llm_pipeline` — 48 tests, 94% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK |
+| `llm_pipeline` — 112 tests, 95% | structured-output config; validation failures with no fallback; retry boundaries; input guards; every eval metric; dataset integrity and PHI markers; contract alignment with the live OpenAPI; Gemini error classification against a stubbed SDK; the Jev adapter against the real SDK with mocked HTTP; review policy, routing, shadow and fail-closed behaviour; local model integrity, split leakage and retraining reproducibility |
 | `frontend` — 34 tests | form submission, pending state, score rendering, accessible error handling, finding grouping, dictionary completeness across seven locales, Cloud Run identity tokens |
 | `scripts/smoke.sh` | the real stack: auth required, create → read → score → persist, answer key absent from both API and rendered HTML |
 
@@ -322,7 +343,8 @@ make check     # lint + typecheck + tests + offline eval
 make smoke     # against a running stack
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of it plus a Docker build with the smoke test,
+CI (`.github/workflows/ci.yml`) runs all of it, the offline decision eval and the local
+model's held-out check, plus a Docker build with the smoke test,
 contract-drift checks, `gitleaks` over the full history, `pip-audit` and `npm audit`.
 It needs no secrets.
 
@@ -375,6 +397,7 @@ they go live; and a larger eval set with inter-rater agreement on the ground tru
 - [`docs/REPORT.md`](docs/REPORT.md) — the written report: what was built, what was actually executed, and what was not
 - [`infra/DEPLOYMENT.md`](infra/DEPLOYMENT.md) — Cloud Run + Cloud SQL runbook, including pool sizing and rollback
 - [`llm_pipeline/evals/README.md`](llm_pipeline/evals/README.md) — the eval dataset and how it is built
+- [`docs/DECISION_MODEL_MIGRATION.md`](docs/DECISION_MODEL_MIGRATION.md) — the decision layer: Jev, our own models, the migration plan
 
 ## Assumptions
 

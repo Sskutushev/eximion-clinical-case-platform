@@ -1,0 +1,48 @@
+{
+  "provider": "reference",
+  "model": "reference-ground-truth",
+  "scenarios": 60,
+  "clean_cases": 10,
+  "planted_defects": 50,
+  "clean_pass_rate": 0.9,
+  "false_review_rate": 0.1,
+  "defect_detection_recall": 0.98,
+  "false_accept_rate": 0.02,
+  "caught_by_expected_check_rate": 0.98,
+  "recall_by_defect": {
+    "presentation_leak": 1.0,
+    "title_leak": 0.9,
+    "unsupported_finding": 1.0,
+    "wrong_category": 1.0,
+    "wrong_diagnosis_status": 1.0
+  },
+  "held_out": {
+    "clean_pass_rate": 1.0,
+    "defect_detection_recall": 0.9333
+  },
+  "verification_unavailable": 0,
+  "calls_per_case": 1.0,
+  "latency_ms_p50": 2.13,
+  "latency_ms_p95": 3.64,
+  "input_tokens_per_case": 0.0,
+  "estimated_usd_per_1000_cases": 0.0,
+  "shadow": {
+    "compared": 69,
+    "agreement_with_primary": 0.8841,
+    "accuracy_held_out": 0.6,
+    "held_out_examples": 20,
+    "accuracy_train_split": 1.0
+  },
+  "failures": [
+    {
+      "example_id": "case-004",
+      "defect": "clean",
+      "status": "needs_review"
+    },
+    {
+      "example_id": "case-008",
+      "defect": "title_leak",
+      "status": "accept"
+    }
+  ]
+}

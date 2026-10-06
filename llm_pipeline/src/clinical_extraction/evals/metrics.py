@@ -3,6 +3,7 @@
 No LLM-as-a-judge: every number here is reproducible from the dataset.
 """
 
+import math
 import re
 import unicodedata
 from dataclasses import asdict, dataclass, field
@@ -101,6 +102,9 @@ class CaseReport:
     findings_exact: SetMetrics | None = None
     finding_category_accuracy: float | None = None
     mismatches: list[str] = field(default_factory=list)
+    latency_ms: float | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 def _answer_key(case: ClinicalCaseExtraction) -> set[str]:
@@ -181,10 +185,24 @@ class EvalSummary:
     findings_f1_exact_text: float
     finding_category_accuracy: float | None
     exact_case_match_rate: float
+    # Cost and speed, so a cheaper pipeline can be compared against this one.
+    latency_ms_p50: float
+    latency_ms_p95: float
+    input_tokens: int
+    output_tokens: int
     failures: list[dict[str, Any]]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def percentile(values: list[float], pct: float) -> float:
+    """Nearest-rank percentile; 0.0 for an empty list."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    rank = max(1, math.ceil(pct / 100 * len(ordered)))
+    return round(ordered[rank - 1], 2)
 
 
 def _mean(values: list[float]) -> float:
@@ -205,6 +223,7 @@ def summarize(
     categories = [
         r.finding_category_accuracy for r in valid if r.finding_category_accuracy is not None
     ]
+    latencies = [r.latency_ms for r in reports if r.latency_ms is not None]
 
     return EvalSummary(
         provider=provider,
@@ -226,6 +245,10 @@ def summarize(
         exact_case_match_rate=(
             round(sum(not r.mismatches for r in valid) / answered, 4) if answered else 0.0
         ),
+        latency_ms_p50=percentile(latencies, 50),
+        latency_ms_p95=percentile(latencies, 95),
+        input_tokens=sum(r.input_tokens for r in reports),
+        output_tokens=sum(r.output_tokens for r in reports),
         failures=[
             {
                 "example_id": r.example_id,

@@ -315,6 +315,20 @@ Notes:
 - The CLI writes the extracted case to stdout for a human to review. It does not
   post to the API, which is why this identity holds no admin key — publishing
   extracted cases needs a review boundary first, and that is a production next step.
+- Verification with Jev (`--verify typesafe`, see `docs/DECISION_MODEL_MIGRATION.md`)
+  is off by default. Turning it on needs one more secret, mounted on this job only:
+
+  ```bash
+  printf '%s' "${TYPESAFE_API_KEY}" | gcloud secrets create eximion-typesafe-api-key --data-file=-
+  gcloud secrets add-iam-policy-binding eximion-typesafe-api-key \
+    --member="serviceAccount:${EXTRACTION_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+  gcloud run jobs update eximion-extraction --region="${REGION}" \
+    --set-secrets="TYPESAFE_API_KEY=eximion-typesafe-api-key:latest"
+  ```
+
+  Synthetic data only until a BAA with TypeSafe is in place. The local models ship
+  inside the image and need no secret.
 
 ## 10. Verify, then roll back if needed
 

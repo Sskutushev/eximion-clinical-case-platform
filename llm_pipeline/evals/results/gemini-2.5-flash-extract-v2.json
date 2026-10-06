@@ -1,0 +1,108 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "prompt_version": "extract-v2",
+  "total": 10,
+  "scored": 10,
+  "provider_errors": 0,
+  "model_blocked": 0,
+  "schema_valid_rate": 1.0,
+  "age_accuracy": 1.0,
+  "sex_accuracy": 1.0,
+  "answer_key_accuracy": 0.9,
+  "findings_precision": 0.436,
+  "findings_recall": 0.6069,
+  "findings_f1": 0.5055,
+  "findings_f1_exact_text": 0.1685,
+  "finding_category_accuracy": 0.9657,
+  "exact_case_match_rate": 0.0,
+  "latency_ms_p50": 3977.0,
+  "latency_ms_p95": 7659.4,
+  "input_tokens": 4314,
+  "output_tokens": 3024,
+  "failures": [
+    {
+      "example_id": "case-001",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-002",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-003",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-004",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "answer_key",
+        "findings",
+        "finding_categories"
+      ]
+    },
+    {
+      "example_id": "case-005",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-006",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-007",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-008",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings",
+        "finding_categories"
+      ]
+    },
+    {
+      "example_id": "case-009",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    },
+    {
+      "example_id": "case-010",
+      "status": "scored",
+      "error": null,
+      "mismatches": [
+        "findings"
+      ]
+    }
+  ]
+}

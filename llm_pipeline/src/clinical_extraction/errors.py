@@ -36,3 +36,23 @@ class SchemaValidationError(ExtractionError):
     def __init__(self, message: str, *, raw_response: str | None = None) -> None:
         super().__init__(message)
         self.raw_response = raw_response
+
+
+class DecisionError(Exception):
+    """Base class for failures in the decision layer (verification of an extraction).
+
+    Kept apart from `ExtractionError` on purpose: a verifier that is down does
+    not make the extraction wrong, it makes it unverified.
+    """
+
+
+class DecisionProviderError(DecisionError):
+    """A decision provider failed (transport, quota, auth, malformed answer)."""
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class UnsupportedDecisionTaskError(DecisionError):
+    """The provider has no model for this task, so it cannot answer it."""

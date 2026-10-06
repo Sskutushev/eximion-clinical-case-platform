@@ -283,8 +283,10 @@ Everything below was run locally on this machine, and the numbers are the real o
 | Backend tests (real PostgreSQL) | `uv run pytest --cov` | **53 passed**, coverage **98.31%** (gate 90%) |
 | Migration integrity | `alembic upgrade head`, `alembic check`, up/down/up in a test | no drift |
 | Pipeline lint / types | `ruff`, `mypy --strict` | clean |
-| Pipeline tests | `uv run pytest --cov` | **48 passed**, coverage **93.92%** (gate 85%) |
+| Pipeline tests | `uv run pytest --cov` | **112 passed**, coverage **95.02%** (gate 85%) |
 | Offline eval | `clinical-extraction eval --provider fake` | gate passed; 4 injected defects detected |
+| Offline decision eval | `clinical-extraction eval-decisions` | gate passed; 2 injected verifier misjudgments detected |
+| Live extraction eval | `clinical-extraction eval --provider gemini --delay 7` | `extract-v2`, 10/10 scored |
 | Frontend lint | `eslint . --max-warnings 0` | clean |
 | Frontend types | `tsc --noEmit` (prod + test configs) | clean |
 | Frontend tests | `vitest run` | **34 passed** |
@@ -299,19 +301,18 @@ Everything below was run locally on this machine, and the numbers are the real o
   provisioned for this assignment, so nothing was deployed to Cloud Run. The runbook is
   complete and reproducible, but I have not run it end to end, and I am not claiming a
   live URL.
-- **A complete Gemini eval run of the current prompt.** The pipeline *was* run against
-  the live Gemini API, and the result is committed as produced in
-  `evals/results/gemini-2.5-flash-extract-v1.json`. Two caveats, both in the file name.
-  It is partial: the run used a free tier whose quota is exhausted partway through ten
-  cases, so two cases were scored and eight are recorded as provider errors. And it
-  measures `extract-v1`: the prompt has since moved to `extract-v2`, which removed
-  `score_weight` from the model's output, and that version has not been run live for
-  the same quota reason. The v2 change narrows what the model produces rather than
-  adding to it, and it is covered by the offline eval and the stubbed-SDK tests, but I
-  am not presenting the v1 numbers as a measurement of the current prompt. A full
-  measurement needs a paid tier or a Vertex project.
+- **Jev (TypeSafe) live.** The decision layer added after the interview is tested
+  against the real TypeSafe SDK with a mocked HTTP layer, and its eval runs offline.
+  No TypeSafe key was available, so there is no live Jev measurement yet. See
+  `docs/DECISION_MODEL_MIGRATION.md`.
 
-The live run was worth doing: it found two faults the offline harness could not.
+**Since executed:** a complete live run of the current prompt, `extract-v2`, all ten
+cases, committed as `evals/results/gemini-2.5-flash-extract-v2.json`: schema 10/10,
+age and sex 1.0, answer key 0.9, findings F1 0.51 by token overlap, category accuracy
+0.97, latency p50 4.0 s. The earlier `extract-v1` file is kept as it was: a partial
+free-tier run of two cases.
+
+The first live run was worth doing: it found two faults the offline harness could not.
 
 **Gemini could not accept the schema at all.** Constrained decoding rejected it with
 *"the specified schema produces a constraint that has too many states for serving"* —
