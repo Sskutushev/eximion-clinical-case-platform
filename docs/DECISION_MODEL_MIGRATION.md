@@ -1,8 +1,8 @@
 # Decision layer: Jev now, our own models next
 
 This note covers what was added after the interview: a decision layer that checks
-every LLM extraction, with Jev (TypeSafe) answering today and our own small models
-trained alongside it. It explains why, how it works, what was measured, and what
+every LLM extraction, with Jev (TypeSafe) as the primary verifier when verification is
+enabled, and our own small models trained alongside it. It explains why, how it works, what was measured, and what
 has not been proven yet.
 
 ## The problem
@@ -64,7 +64,7 @@ what to do with the answers, and thresholds are treated as unproven until measur
 flowchart LR
     RAW["raw clinical text"] --> GEM["Gemini extraction<br/>(unchanged)"]
     GEM --> PYD["Pydantic contract<br/>(unchanged)"]
-    PYD --> Q["18 atomic questions<br/>per case"]
+    PYD --> Q["a batch of atomic<br/>questions per case"]
     Q --> R{"router<br/>per task"}
     R -->|primary| JEV["Jev (TypeSafe)"]
     R -.->|shadow, never decides| LOC["local model<br/>finding_category"]
@@ -77,9 +77,12 @@ flowchart LR
 Scoring participants' answers is not part of this flow and does not change. It stays
 deterministic, in the backend, with no model involved.
 
-### The four tasks
+### Five kinds of check
 
-Defined once in `decisioning/tasks.py`, shared by every provider, versioned:
+Defined once in `decisioning/tasks.py`, shared by every provider, versioned. A case
+gets one question per finding for support and for category, one per diagnosis, one
+each for the title and the presentation, and one for completeness: a batch of
+2 × findings + diagnoses + 3, sent in a single request.
 
 | Task | Labels | Catches |
 |---|---|---|
@@ -87,6 +90,12 @@ Defined once in `decisioning/tasks.py`, shared by every provider, versioned:
 | `finding_category` | the 7 finding categories | wrong category |
 | `diagnosis_status` | established, differential, excluded, not_stated | a differential stored as the answer, an invented diagnosis |
 | `diagnosis_leak` | yes / no | a title or presentation that gives the answer away |
+| `finding_completeness` (experimental) | complete, likely_incomplete | findings the source states but the extraction missed |
+
+Support checks what was extracted (precision). Completeness checks what was left out
+(recall), which is where the live Gemini run loses most. It is marked experimental:
+judging "is anything relevant missing" is a broader question than the others, and
+whether Jev answers it reliably has not been measured yet.
 
 Jev today, a local model tomorrow and a human reviewer all work against the same
 labels and descriptions. Change a label's meaning and the task version changes, so
@@ -97,7 +106,8 @@ old predictions and old training data are never mixed with new ones.
 - **Providers answer, they never edit.** If Jev disagrees with Gemini, the case goes
   to review. Nothing is silently corrected.
 - **Doubt means review.** Confidence below the threshold is a reason for a person to
-  look, not a reason to guess.
+  look, not a reason to guess. That includes a leak check that is unsure of its own
+  "no". A likely leak has its own, lower bar and is flagged either way.
 - **Fail closed.** If the verifier is down, the case is marked `needs_review` with
   the reason `unavailable`. It is never accepted unchecked.
 - **Accept is not publish.** `accept` means the automatic checks passed. A person
@@ -105,15 +115,24 @@ old predictions and old training data are never mixed with new ones.
 - **No clinical text in logs.** Reasons and decisions carry positions (`findings[2]`)
   and labels only. The TypeSafe SDK logs request bodies at debug level, so its logger
   is pinned to WARNING.
-- **Jev runs only on synthetic data.** TypeSafe offers a DPA and zero retention for
-  enterprise, but I found no public BAA. Real patient data needs that settled first.
+- **Synthetic data only.** Real patient data goes to Jev only after a privacy and
+  security review confirms PHI use is permitted and the required contractual controls,
+  including a BAA where applicable, are in place. TypeSafe publishes a DPA and offers
+  zero data retention for enterprise; I found no public statement on a BAA.
+- **One call per provider per case.** Mid-migration a provider can be primary for some
+  tasks and shadow for others. The router plans calls by provider, so it is still one
+  request, and the answers are split by role afterwards.
+- **The exact model is recorded.** Each decision carries the model that actually
+  answered (`jev-1.13.0`), and eval reports keep both the requested alias
+  (`jev-latest`) and the resolved versions, so a committed result stays reproducible
+  after the alias moves.
 
 ### Code layout
 
 ```
 llm_pipeline/src/clinical_extraction/
   decisioning/
-    tasks.py          the four tasks, labels, versions
+    tasks.py          the checks, their labels and versions
     queries.py        candidate case -> atomic questions
     providers/
       base.py         DecisionProvider: one contract for Jev, local and fake
@@ -156,9 +175,11 @@ Every training record says where its label came from:
 | `synthetic_seed` (hand-written phrases) | yes, train only |
 | `weak_label` (any model's prediction, Jev's included) | no |
 
-Jev's answers are never ground truth. Training a local model to copy Jev and then
-calling it good because it agrees with Jev would measure nothing. Model predictions
-are kept to find disagreements and to decide what a person should review next.
+Jev's answers are never ground truth and never training data. Training a local
+model to copy Jev and then calling it good because it agrees with Jev would measure
+nothing, and using a vendor's outputs to build a replacement is a contractual question
+in its own right. Model predictions are kept only to find disagreements and to decide
+what a person should review next.
 
 The split is made by vignette (`case_group_id`). Every record from one case sits on
 one side only, so variants of the same case cannot leak from training into the test.
@@ -177,6 +198,9 @@ no generation involved.
   held-out metrics, the gate result and the SHA-256 of the weights. A mismatch is
   refused at load time.
 - Inference is plain Python. The runtime image has no numpy or scikit-learn.
+- Out-of-distribution guard: if less than 30% of a text's features were seen in
+  training, the softmax answer is mostly intercept, so its confidence is set to 0 and
+  the policy sends it to review.
 - A test retrains the model and checks it matches the committed one. If the data
   changes and nobody retrains, CI fails.
 
@@ -252,19 +276,22 @@ All numbers come from committed code and can be re-run.
 | latency p50 / p95 | 4.0 s / 7.7 s |
 | tokens per case | ~431 in / ~302 out (thinking tokens not included) |
 
-Gemini is already good at categories. The weak spot is how findings are split and
-worded, which is exactly what `finding_support` looks at.
+Gemini is already good at categories. The weak spot is the findings list:
+precision 0.44 and recall 0.61. `finding_support` targets the first (findings the
+source does not state). `finding_completeness` targets the second (findings the
+extraction dropped), and is the experimental check to watch in the first live Jev run.
 
 ### 2. The verifier, offline
 
 `eval-decisions` runs every vignette clean and with one planted defect at a time:
-10 clean candidates, 50 broken ones. The verifier here is a reference built from the
+10 clean candidates, 60 broken ones. The verifier here is a reference built from the
 ground truth with two deliberate misjudgments, so this measures the checks, the
 policy and the harness, not Jev (`decision-eval-reference.json`):
 
 | Metric | Value |
 |---|---|
-| defect detection recall | 0.98 (49 / 50) |
+| defect detection recall | 0.98 (59 / 60) |
+| dropped finding caught | 10 / 10 |
 | false accept rate | 0.02, the planted title-leak miss |
 | clean pass rate | 0.9, the planted low-confidence case goes to review |
 | caught by the check meant for it | 0.98 |
@@ -312,7 +339,7 @@ Per case, with list prices as of 2026-10-06 (override them in settings, they cha
 | Gemini 2.5 Flash extraction (measured) | ~431 in, ~302 out | ~0.88, a lower bound: thinking tokens are billed but not counted here |
 | Jev verification (estimated from request size) | ~2,400 in, output free | ~0.10 |
 
-So verification adds roughly a tenth to the cost and one more network call after a
+So verification is estimated, not yet measured, to add roughly a tenth to the cost and one more network call after a
 four-second extraction. Most of the Jev request is the label descriptions repeated
 for every finding; trimming them is the obvious first optimisation once live numbers
 exist.
@@ -339,8 +366,8 @@ has to be measured with the same harness before anyone claims it.
   good Jev is.
 - Jev has not been run live: no TypeSafe key was available. The adapter is tested
   against the real SDK with a mocked HTTP layer.
-- Missing findings are not checked. No current question looks for them, so the eval
-  plants no such defect rather than claiming coverage.
+- The completeness check is experimental. Offline it is checked against a reference
+  that knows the ground truth; whether Jev judges it well is the open question.
 - Thresholds (`MIN_CONFIDENCE=0.5`, `LEAK_FLAG_PROBABILITY=0.5`) are starting points.
   They are calibrated on a dev split and confirmed on held-out data before production.
 

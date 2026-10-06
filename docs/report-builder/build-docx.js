@@ -295,7 +295,7 @@ children.push(table(
     ["Backend tests (real PostgreSQL)", "uv run pytest --cov", "53 passed, coverage 98.31% (gate 90%)"],
     ["Migration integrity", "alembic upgrade head, alembic check, up/down/up", "no drift"],
     ["Pipeline lint / types", "ruff, mypy --strict", "clean"],
-    ["Pipeline tests", "uv run pytest --cov", "112 passed, coverage 95.02% (gate 85%)"],
+    ["Pipeline tests", "uv run pytest --cov", "120 passed, coverage 95.07% (gate 85%)"],
     ["Offline eval", "clinical-extraction eval --provider fake", "gate passed; 4 injected defects detected"],
     ["Offline decision eval", "clinical-extraction eval-decisions", "gate passed; 2 injected verifier misjudgments detected"],
     ["Live extraction eval", "clinical-extraction eval --provider gemini --delay 7", "extract-v2, 10/10 scored"],
