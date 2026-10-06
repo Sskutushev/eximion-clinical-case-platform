@@ -372,10 +372,17 @@ jobs:
         run: |
           uv export --directory ${{ matrix.dir }} --no-emit-project --no-hashes -o /tmp/reqs.txt
           uvx pip-audit --strict -r /tmp/reqs.txt
-      - name: npm audit
+      # The gate covers what ships. Dev tooling is still reported, but an advisory
+      # with no fixed release (braces, via eslint-config-next, October 2026)
+      # must not block every change to the repository.
+      - name: npm audit (production dependencies, blocking)
         if: matrix.kind == 'node'
         working-directory: ${{ matrix.dir }}
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
+      - name: npm audit (all dependencies, report only)
+        if: matrix.kind == 'node'
+        working-directory: ${{ matrix.dir }}
+        run: npm audit --audit-level=high || echo "::warning::dev dependencies have open advisories, see the report above"
 
   workflow-lint:
     name: quality · workflow and shell lint
